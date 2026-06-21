@@ -1,0 +1,27 @@
+{
+  "name": "اسپادانا - پیش فاکتور",
+  "short_name": "اسپادانا",
+  "description": "صدور پیش فاکتور رسمی شرکت اسپادانا طرح و نظارت",
+  "start_url": "/espadana-invoice/",
+  "scope": "/espadana-invoice/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#ffffff",
+  "theme_color": "#1565C0",
+  "lang": "fa",
+  "dir": "rtl",
+  "icons": [
+    {
+      "src": "assets/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "assets/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
