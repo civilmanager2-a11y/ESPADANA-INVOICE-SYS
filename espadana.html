@@ -1,0 +1,639 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="theme-color" content="#1565C0">
+<title>اسپادانا - پیش فاکتور</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;700&display=swap');
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Vazirmatn',Tahoma,sans-serif;background:#F0F4F8;color:#222;direction:rtl;font-size:14px}
+:root{--blue:#1565C0;--light:#E3F2FD;--sh:0 2px 8px rgba(0,0,0,0.1)}
+
+/* TOPBAR */
+.topbar{background:var(--blue);color:#fff;padding:10px 16px;display:flex;align-items:center;gap:12px;position:sticky;top:0;z-index:100;box-shadow:var(--sh)}
+.logo-left{flex-shrink:0}
+.topbar-title{font-size:15px;font-weight:700;flex:1;text-align:center}
+.btn-sm{background:rgba(255,255,255,0.2);border:1px solid rgba(255,255,255,0.4);color:#fff;border-radius:20px;padding:6px 14px;font-family:inherit;font-size:13px;cursor:pointer;white-space:nowrap}
+
+/* SCREENS */
+.screen{display:none;padding:12px;max-width:640px;margin:0 auto}
+.screen.active{display:block}
+
+/* CARDS */
+.card{background:#fff;border-radius:12px;box-shadow:var(--sh);margin-bottom:12px;overflow:hidden}
+.card-h{background:var(--blue);color:#fff;padding:9px 14px;font-weight:700;font-size:14px;display:flex;align-items:center;gap:7px}
+.card-b{padding:12px}
+
+/* FORM */
+.f{margin-bottom:9px}
+.f label{display:block;font-size:12px;color:#666;margin-bottom:3px;font-weight:700}
+.f input,.f textarea{width:100%;border:1.5px solid #ddd;border-radius:8px;padding:8px 11px;font-family:inherit;font-size:14px;direction:rtl;background:#fff;transition:border 0.2s}
+.f input:focus,.f textarea:focus{outline:none;border-color:var(--blue)}
+.r2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.r3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
+.meta-box{background:var(--light);border:1.5px solid #90CAF9;border-radius:10px;padding:10px 14px;display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
+.meta-item label{font-size:11px;color:#555;display:block}
+.meta-item span{font-size:20px;font-weight:700;color:var(--blue);display:block}
+.item-card{background:#F8FBFF;border:1.5px solid #BBDEFB;border-radius:10px;padding:10px;margin-bottom:10px}
+.item-hd{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.item-num{background:var(--blue);color:#fff;border-radius:16px;padding:2px 10px;font-size:12px;font-weight:700}
+.btn-del{background:none;border:none;color:#e53935;font-size:20px;cursor:pointer}
+.item-total{background:#E8F5E9;border-radius:6px;padding:5px 10px;font-size:12px;color:#2E7D32;font-weight:700;margin-top:6px;text-align:left;direction:ltr}
+.btn-add{width:100%;border:2px dashed var(--blue);background:none;color:var(--blue);border-radius:8px;padding:10px;font-family:inherit;font-size:14px;cursor:pointer;font-weight:700}
+.btn-pdf{width:100%;background:var(--blue);color:#fff;border:none;border-radius:12px;padding:14px;font-family:inherit;font-size:16px;font-weight:700;cursor:pointer;margin-top:16px;display:flex;align-items:center;justify-content:center;gap:8px;box-shadow:0 4px 12px rgba(21,101,192,0.4)}
+.sum-bar{background:var(--light);border-radius:8px;padding:10px 14px;margin-top:10px;font-size:13px;display:flex;flex-direction:column;gap:4px;border:1px solid #90CAF9}
+.sum-bar .big{font-weight:700;color:var(--blue);font-size:15px}
+.list-item{display:flex;align-items:center;gap:10px;padding:12px;border-bottom:1px solid #eee;cursor:pointer}
+.list-item:last-child{border-bottom:none}
+.list-badge{width:46px;height:46px;background:var(--light);border-radius:10px;display:flex;align-items:center;justify-content:center;font-weight:700;color:var(--blue);font-size:13px;flex-shrink:0}
+.list-info{flex:1}.list-info .nm{font-weight:700;font-size:15px}
+.list-info .mt{font-size:12px;color:#777;margin-top:2px}
+.list-info .am{font-size:13px;color:var(--blue);font-weight:700;margin-top:2px}
+.btn-dl{background:none;border:none;color:#e53935;font-size:20px;cursor:pointer;padding:4px}
+.empty{text-align:center;padding:60px 20px;color:#aaa}
+.empty .ic{font-size:64px;margin-bottom:12px}
+.req{color:#e53935;font-size:11px}
+
+/* ===== PRINT / PDF ===== */
+@page { size: A4 landscape; margin: 8mm; }
+@media print {
+  body { background:#fff!important }
+  .topbar,.no-print { display:none!important }
+  #screen-print { display:block!important; padding:0!important; max-width:100%!important }
+  .inv-page { padding:0 }
+}
+
+/* Invoice page - landscape A4 */
+.inv-page {
+  background:#fff;
+  font-family:'Vazirmatn',Tahoma,sans-serif;
+  direction:rtl;
+  font-size:11px;
+  width:100%;
+}
+
+/* ─── TOP HEADER ROW ─── */
+.inv-header {
+  display:table;
+  width:100%;
+  border:2px solid var(--blue);
+  border-radius:6px;
+  margin-bottom:5px;
+  overflow:hidden;
+}
+.inv-header-col {
+  display:table-cell;
+  vertical-align:middle;
+  padding:8px 10px;
+}
+/* Col 1: serial/date (right side in RTL = visual left of table) */
+.hcol-serial {
+  width:165px;
+  border-right:2px solid var(--blue);
+  background:#FAFCFF;
+  font-size:12px;
+}
+.hcol-serial table{width:100%;border-collapse:collapse}
+.hcol-serial td{padding:3px 6px}
+.hcol-serial td:first-child{color:#333;font-weight:700;white-space:nowrap}
+.hcol-serial td:last-child{color:var(--blue);font-weight:700;direction:ltr;text-align:left}
+/* Col 2: title (center) */
+.hcol-title {
+  text-align:center;
+}
+.hcol-title h1 { font-size:18px; color:var(--blue); font-weight:700; }
+.hcol-title p  { font-size:10px; color:#777; margin-top:2px; }
+/* Col 3: logo (left in RTL = visual right) */
+.hcol-logo {
+  width:160px;
+  border-left:2px solid var(--blue);
+  text-align:center;
+}
+
+/* ─── SECTION BOX ─── */
+.inv-sec { border:1.5px solid #90CAF9; border-radius:4px; margin-bottom:5px; overflow:hidden; }
+.inv-sec-t { background:var(--blue); color:#fff; padding:4px 10px; font-weight:700; font-size:12px; }
+.inv-sec-b { padding:6px 10px; font-size:11px; }
+.info-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:3px 10px; }
+.info-item { display:flex; gap:4px; align-items:baseline; white-space:nowrap; overflow:hidden; }
+.info-item b { color:#333; flex-shrink:0; }
+.info-item span { color:#111; text-overflow:ellipsis; overflow:hidden; }
+.info-row2 { display:grid; grid-template-columns:1fr; gap:3px; margin-top:3px; }
+.info-addr { display:flex; gap:4px; align-items:baseline; }
+
+/* ─── ITEMS TABLE ─── */
+table.inv-table {
+  width:100%;
+  border-collapse:collapse;
+  font-size:10.5px;
+  margin-bottom:5px;
+}
+table.inv-table th {
+  background:var(--blue);
+  color:#fff;
+  padding:5px 3px;
+  text-align:center;
+  border:1px solid #1976D2;
+  font-size:10px;
+  line-height:1.3;
+}
+table.inv-table td {
+  padding:5px 3px;
+  text-align:center;
+  border:1px solid #BBDEFB;
+  vertical-align:middle;
+}
+table.inv-table tr:nth-child(even) td { background:#F5FAFF; }
+table.inv-table .td-desc { text-align:right; padding-right:6px; }
+table.inv-table .sum-row td {
+  background:var(--light);
+  font-weight:700;
+  border-top:2px solid var(--blue);
+}
+
+/* ─── BOTTOM SECTION ─── */
+.inv-bottom { display:flex; gap:6px; margin-bottom:5px; }
+.inv-bank { flex:1; border:1.5px solid #90CAF9; border-radius:4px; overflow:hidden; }
+.inv-bank-t { background:var(--blue); color:#fff; padding:4px 10px; font-weight:700; font-size:11px; }
+.inv-bank-b { padding:7px 10px; font-size:10.5px; line-height:1.9; }
+.inv-totals { width:230px; flex-shrink:0; border:1.5px solid #90CAF9; border-radius:4px; overflow:hidden; font-size:11px; }
+.tot-row { display:flex; justify-content:space-between; padding:5px 10px; border-bottom:1px solid #E3F2FD; }
+.tot-row:last-child { border:none; background:var(--light); font-weight:700; font-size:12px; }
+
+/* ─── SIGNATURES ─── */
+.inv-sigs { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:5px; }
+.sig-box { text-align:center; border:1px solid #ddd; border-radius:4px; padding:8px 5px 6px; font-size:11px; }
+.sig-box-inner { display:flex; align-items:center; justify-content:center; gap:6px; height:76px; }
+.sig-line { border-top:1px solid #555; width:100px; margin:0 auto 4px; }
+
+/* ─── TERMS ─── */
+.inv-terms { border:1px solid #ddd; border-radius:4px; padding:6px 10px; font-size:9.5px; color:#444; line-height:1.8; margin-bottom:5px; }
+
+/* ─── FOOTER ─── */
+.inv-footer { display:flex; justify-content:space-between; align-items:center; border-top:2px solid var(--blue); padding-top:5px; font-size:10px; }
+.inv-footer-site { color:#555; font-size:10px; direction:ltr; }
+.inv-footer-name { color:var(--blue); font-weight:700; }
+</style>
+</head>
+<body>
+
+<!-- TOPBAR: لوگو سمت چپ -->
+<div class="topbar" id="topbar">
+  <div class="logo-left">
+    <svg viewBox="0 0 150 40" width="120" height="34" xmlns="http://www.w3.org/2000/svg">
+      <text x="2" y="26" font-family="Arial Black,Arial" font-weight="900" font-size="22" fill="#fff" letter-spacing="1">ESPADANA</text>
+      <text x="2" y="37" font-family="Arial,sans-serif" font-size="9" fill="rgba(255,255,255,0.85)">Design &amp; supervision</text>
+    </svg>
+  </div>
+  <span class="topbar-title" id="topbar-title">پیش فاکتور</span>
+  <div id="topbar-actions">
+    <button class="btn-sm" onclick="showForm()">➕ فاکتور جدید</button>
+  </div>
+</div>
+
+<!-- LIST -->
+<div class="screen active" id="screen-list">
+  <div id="list-container" style="padding-top:4px">
+    <div class="empty"><div class="ic">🧾</div><p>هنوز فاکتوری ثبت نشده</p><p style="font-size:12px;margin-top:6px">دکمه «فاکتور جدید» را بزنید</p></div>
+  </div>
+</div>
+
+<!-- FORM -->
+<div class="screen" id="screen-form">
+  <div class="meta-box">
+    <div class="meta-item"><label>شماره سریال</label><span id="f-serial">-</span></div>
+    <div class="meta-item" style="text-align:center"><label>تاریخ</label><span id="f-date" style="font-size:16px;direction:ltr;display:block">-</span></div>
+    <div class="meta-item" style="text-align:left;direction:ltr">
+      <label style="direction:rtl">شماره تلفن خریدار</label>
+      <input id="f-phone" style="border:1.5px solid #ddd;border-radius:6px;padding:5px 8px;font-family:inherit;font-size:13px;width:130px;direction:ltr" placeholder="021...">
+    </div>
+  </div>
+  <form id="inv-form" onsubmit="return false">
+    <div class="card">
+      <div class="card-h">👤 مشخصات خریدار</div>
+      <div class="card-b">
+        <div class="f"><label>نام شخص حقیقی / حقوقی <span class="req">*</span></label><input id="f-name" required placeholder="نام کامل یا نام شرکت"></div>
+        <div class="r2">
+          <div class="f"><label>شماره اقتصادی</label><input id="f-eco" inputmode="numeric"></div>
+          <div class="f"><label>شناسه ملی / شماره ثبت</label><input id="f-natid" placeholder="شناسه/ثبت"></div>
+        </div>
+        <div class="r3">
+          <div class="f"><label>استان</label><input id="f-prov" placeholder="تهران"></div>
+          <div class="f"><label>شهرستان</label><input id="f-city" placeholder="تهران"></div>
+          <div class="f"><label>کدپستی</label><input id="f-postal" inputmode="numeric" maxlength="10"></div>
+        </div>
+        <div class="f"><label>نشانی دقیق</label><textarea id="f-addr" rows="2" placeholder="آدرس کامل..."></textarea></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-h">📋 شرح کالا / خدمات</div>
+      <div class="card-b">
+        <div id="items-container"></div>
+        <button type="button" class="btn-add" onclick="addItem()">＋ افزودن ردیف جدید</button>
+        <div class="sum-bar" id="sum-bar" style="display:none">
+          <div>جمع مبلغ کل: <b id="s-sub">-</b> ریال</div>
+          <div>جمع تخفیف: <b id="s-disc">-</b> ریال</div>
+          <div>جمع پس از تخفیف: <b id="s-aft">-</b> ریال</div>
+          <div>جمع مالیات و عوارض (۱۰٪): <b id="s-vat">-</b> ریال</div>
+          <div class="big">مبلغ قابل پرداخت: <b id="s-total">-</b> ریال</div>
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-h">📝 توضیحات</div>
+      <div class="card-b"><div class="f"><textarea id="f-notes" rows="2" placeholder="توضیحات (اختیاری)..."></textarea></div></div>
+    </div>
+    <button type="button" class="btn-pdf" onclick="generatePDF()">🖨️ صدور پیش فاکتور PDF</button>
+    <div style="height:24px"></div>
+  </form>
+</div>
+
+<!-- PRINT SCREEN -->
+<div class="screen" id="screen-print">
+  <div class="no-print" style="background:var(--blue);color:#fff;padding:10px 14px;display:flex;justify-content:space-between;align-items:center;margin:-12px -12px 12px -12px">
+    <button class="btn-sm" onclick="backToList()">← بازگشت</button>
+    <span style="font-weight:700" id="print-title-bar">پیش‌نمایش فاکتور</span>
+    <button class="btn-sm" onclick="window.print()">🖨️ چاپ / PDF</button>
+  </div>
+  <div class="no-print" style="background:#FFF9C4;border:1px solid #F9A825;border-radius:8px;padding:8px 12px;font-size:12px;margin-bottom:10px;text-align:center">
+    برای ذخیره PDF: «چاپ» ← <b>Save as PDF</b> را انتخاب کنید &nbsp;|&nbsp; تنظیم صفحه: <b>Landscape (افقی)</b>
+  </div>
+  <div id="print-content"></div>
+</div>
+
+<script>
+// ===== JALALI - الگوریتم استاندارد با g_y = gy - 1600 =====
+function toJalali(gy, gm, gd) {
+  var gy2 = gy - 1600, gm2 = gm - 1, gd2 = gd - 1;
+  var gdn = 365*gy2 + Math.floor((gy2+3)/4) - Math.floor((gy2+99)/100) + Math.floor((gy2+399)/400);
+  var gmo = [31, 28+(gy2%4==0&&(gy2%100!=0||gy2%400==0)?1:0), 31,30,31,30,31,31,30,31,30,31];
+  for(var i=0;i<gm2;i++) gdn += gmo[i];
+  gdn += gd2;
+  var jdn = gdn - 79;
+  var jnp = Math.floor(jdn/12053); jdn %= 12053;
+  var jy = 979 + 33*jnp + 4*Math.floor(jdn/1461); jdn %= 1461;
+  if(jdn >= 366){ jy += Math.floor((jdn-1)/365); jdn = (jdn-1)%365; }
+  var jmo = [31,31,31,31,31,31,30,30,30,30,30,29];
+  for(var i=0; i<11 && jdn>=jmo[i]; i++) jdn -= jmo[i];
+  return { y:jy, m:String(i+1).padStart(2,'0'), d:String(jdn+1).padStart(2,'0') };
+}
+function todayJ() {
+  var t = new Date();
+  var j = toJalali(t.getFullYear(), t.getMonth()+1, t.getDate());
+  return j.y + '/' + j.m + '/' + j.d;
+}
+
+// ===== STORAGE =====
+function getSerial(){ return parseInt(localStorage.getItem('esp_serial')||'345'); }
+function nextSerial(){ var s=getSerial(); localStorage.setItem('esp_serial',s+1); return s; }
+function saveInv(inv){ var l=getInvs(); l.push(inv); localStorage.setItem('esp_invs',JSON.stringify(l)); }
+function getInvs(){ try{return JSON.parse(localStorage.getItem('esp_invs')||'[]');}catch(e){return[];} }
+function delInvStore(s){ var l=getInvs().filter(function(i){return i.serial!=s;}); localStorage.setItem('esp_invs',JSON.stringify(l)); }
+
+// ===== NUMBERS =====
+function fmt(n){ if(!n&&n!==0) return '-'; return Math.round(n).toString().replace(/\B(?=(\d{3})+(?!\d))/g,','); }
+function pnum(s){ return parseFloat((s||'').toString().replace(/,/g,''))||0; }
+function fmtInput(el){ var r=(el.value||'').replace(/,/g,'').replace(/[^0-9]/g,''); if(r) el.value=r.replace(/\B(?=(\d{3})+(?!\d))/g,','); }
+
+// ===== ITEMS =====
+var itemIdx=0;
+function addItem(){
+  itemIdx++;
+  var n=itemIdx, c=document.getElementById('items-container'), d=document.createElement('div');
+  d.className='item-card'; d.id='item-'+n;
+  d.innerHTML='<div class="item-hd"><span class="item-num">ردیف '+n+'</span>'+
+    '<button type="button" class="btn-del" onclick="rmItem('+n+')">🗑</button></div>'+
+    '<div class="f"><label>شرح کالا / خدمات <span class="req">*</span></label><input class="i-d" required placeholder="توضیح کامل..."></div>'+
+    '<div class="r3">'+
+      '<div class="f"><label>واحد</label><input class="i-u" placeholder="عدد/متر/کیلو..."></div>'+
+      '<div class="f"><label>مقدار <span class="req">*</span></label><input class="i-q" inputmode="decimal" value="1" oninput="calcItem('+n+')"></div>'+
+      '<div class="f"><label>تخفیف (ریال)</label><input class="i-dc" inputmode="numeric" value="0" oninput="fmtInput(this);calcItem('+n+')"></div>'+
+    '</div>'+
+    '<div class="f"><label>مبلغ واحد (ریال) <span class="req">*</span></label>'+
+      '<input class="i-p" inputmode="numeric" placeholder="0" oninput="fmtInput(this);calcItem('+n+')"></div>'+
+    '<div class="item-total" id="itot-'+n+'"></div>';
+  c.appendChild(d); updateNums(); calcSummary();
+}
+function rmItem(n){ var el=document.getElementById('item-'+n); if(el) el.remove(); updateNums(); calcSummary(); }
+function updateNums(){
+  document.querySelectorAll('#items-container .item-card').forEach(function(c,i){
+    c.querySelector('.item-num').textContent='ردیف '+(i+1);
+  });
+}
+function calcItem(n){
+  var c=document.getElementById('item-'+n); if(!c) return;
+  var p=pnum(c.querySelector('.i-p').value), q=pnum(c.querySelector('.i-q').value), dc=pnum(c.querySelector('.i-dc').value);
+  var tot=p*q, aft=tot-dc, vat=aft*0.10;
+  var t=document.getElementById('itot-'+n);
+  if(t) t.innerHTML='کل: <b>'+fmt(tot)+'</b> | پس از تخفیف: <b>'+fmt(aft)+'</b> | مالیات: <b>'+fmt(vat)+'</b> ریال';
+  calcSummary();
+}
+function getItemsData(){
+  var cards=document.querySelectorAll('#items-container .item-card'), items=[];
+  cards.forEach(function(c,i){
+    var p=pnum(c.querySelector('.i-p').value), q=pnum(c.querySelector('.i-q').value), dc=pnum(c.querySelector('.i-dc').value);
+    var tot=p*q, aft=tot-dc, vat=aft*0.10;
+    items.push({row:i+1, desc:c.querySelector('.i-d').value||'', unit:c.querySelector('.i-u').value||'',
+      qty:q, price:p, total:tot, discount:dc, afterDisc:aft, vat:vat, payable:aft+vat});
+  });
+  return items;
+}
+function calcSummary(){
+  var items=getItemsData();
+  if(!items.length){document.getElementById('sum-bar').style.display='none';return;}
+  var sub=0,disc=0,aft=0,vat=0;
+  items.forEach(function(i){sub+=i.total;disc+=i.discount;aft+=i.afterDisc;vat+=i.vat;});
+  document.getElementById('s-sub').textContent=fmt(sub);
+  document.getElementById('s-disc').textContent=fmt(disc);
+  document.getElementById('s-aft').textContent=fmt(aft);
+  document.getElementById('s-vat').textContent=fmt(vat);
+  document.getElementById('s-total').textContent=fmt(aft+vat);
+  document.getElementById('sum-bar').style.display='flex';
+}
+
+// ===== SCREENS =====
+function setTopbar(title,actions){
+  document.getElementById('topbar-title').textContent=title;
+  document.getElementById('topbar-actions').innerHTML=actions;
+}
+function showList(){
+  ['screen-list','screen-form','screen-print'].forEach(function(id){document.getElementById(id).classList.remove('active');});
+  document.getElementById('screen-list').classList.add('active');
+  setTopbar('پیش فاکتور','<button class="btn-sm" onclick="showForm()">➕ فاکتور جدید</button>');
+  renderList();
+}
+function showForm(){
+  itemIdx=0; document.getElementById('items-container').innerHTML='';
+  document.getElementById('inv-form').reset();
+  document.getElementById('f-serial').textContent=getSerial();
+  document.getElementById('f-date').textContent=todayJ();
+  ['screen-list','screen-form','screen-print'].forEach(function(id){document.getElementById(id).classList.remove('active');});
+  document.getElementById('screen-form').classList.add('active');
+  setTopbar('فاکتور جدید','<button class="btn-sm" onclick="showList()">← بازگشت</button>');
+  addItem();
+  document.getElementById('f-name').focus();
+}
+function showPrint(inv){
+  ['screen-list','screen-form','screen-print'].forEach(function(id){document.getElementById(id).classList.remove('active');});
+  document.getElementById('screen-print').classList.add('active');
+  setTopbar('پیش‌نمایش #'+inv.serial,'<button class="btn-sm" onclick="backToList()">← بازگشت</button>');
+  renderPrint(inv);
+}
+function backToList(){ showList(); }
+
+// ===== GENERATE =====
+function generatePDF(){
+  var name=document.getElementById('f-name').value.trim();
+  if(!name){alert('لطفاً نام خریدار را وارد کنید');return;}
+  var items=getItemsData();
+  if(!items.length||!items[0].desc){alert('حداقل یک ردیف کالا/خدمات وارد کنید');return;}
+  for(var i=0;i<items.length;i++){
+    if(!items[i].desc){alert('شرح ردیف '+(i+1)+' را وارد کنید');return;}
+    if(!items[i].price){alert('مبلغ واحد ردیف '+(i+1)+' را وارد کنید');return;}
+  }
+  var serial=nextSerial(), date=document.getElementById('f-date').textContent;
+  var sub=0,disc=0,aft=0,vat=0;
+  items.forEach(function(i){sub+=i.total;disc+=i.discount;aft+=i.afterDisc;vat+=i.vat;});
+  var inv={
+    serial:serial, date:date,
+    name:name,
+    eco:document.getElementById('f-eco').value,
+    natid:document.getElementById('f-natid').value,
+    prov:document.getElementById('f-prov').value,
+    city:document.getElementById('f-city').value,
+    postal:document.getElementById('f-postal').value,
+    addr:document.getElementById('f-addr').value,
+    phone:document.getElementById('f-phone').value,
+    notes:document.getElementById('f-notes').value,
+    items:items,
+    subtotal:sub, discount:disc, afterDisc:aft, vat:vat, total:aft+vat
+  };
+  saveInv(inv); showPrint(inv);
+}
+
+// ===== STAMP & SIGNATURE - از فایل واقعی =====
+// فایل‌ها را در C:\CW\espadana_app\assets\ ذخیره کنید:
+//   stamp.jpg    ← تصویر مهر
+//   signature.jpg ← تصویر امضاء
+var STAMP_IMG = '<img src="assets/stamp.jpg" '+
+  'style="height:2cm;width:2cm;object-fit:contain;mix-blend-mode:multiply;flex-shrink:0" '+
+  'onerror="this.outerHTML=\'<div style=&quot;height:2cm;width:2cm;border:1px dashed #aaa;display:flex;align-items:center;justify-content:center;font-size:9px;color:#999&quot;>مهر</div>\'">';
+var SIG_IMG = '<img src="assets/signature.jpg" '+
+  'style="height:2cm;width:3cm;object-fit:contain;mix-blend-mode:multiply;flex-shrink:0" '+
+  'onerror="this.outerHTML=\'<div style=&quot;height:2cm;width:3cm&quot;></div>\'">';
+
+// ===== RENDER PRINT - مطابق دقیق اکسل =====
+function esc(s){ return (s||'').toString().replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+function renderPrint(inv){
+  var tq=0; inv.items.forEach(function(i){tq+=i.qty;});
+
+  var rows = inv.items.map(function(it,i){
+    return '<tr>'+
+      '<td>'+(i+1)+'</td>'+
+      '<td class="td-desc">'+esc(it.desc)+'</td>'+
+      '<td>'+fmt(it.qty)+'</td>'+
+      '<td>'+esc(it.unit)+'</td>'+
+      '<td>'+fmt(it.price)+'</td>'+
+      '<td>'+fmt(it.total)+'</td>'+
+      '<td>'+fmt(it.discount||0)+'</td>'+
+      '<td>'+fmt(it.afterDisc)+'</td>'+
+      '<td>'+fmt(it.vat)+'</td>'+
+    '</tr>';
+  }).join('');
+
+  var html =
+  '<div class="inv-page">'+
+
+  /* ── HEADER ── */
+  '<div class="inv-header">'+
+    /* لوگو سمت راست بصری (در RTL = اول) */
+    '<div class="inv-header-col hcol-logo">'+
+      '<svg viewBox="0 0 160 55" width="145" height="50" xmlns="http://www.w3.org/2000/svg">'+
+        '<text x="2" y="36" font-family="Arial Black,Arial" font-weight="900" font-size="28" fill="#1565C0" letter-spacing="1">ESPADANA</text>'+
+        '<text x="2" y="50" font-family="Arial,sans-serif" font-size="12" fill="#1565C0">Design &amp; supervision</text>'+
+      '</svg>'+
+    '</div>'+
+    /* وسط = عنوان */
+    '<div class="inv-header-col hcol-title">'+
+      '<h1>پیش فاکتور فروش کالا</h1>'+
+      '<p>Pro-forma Invoice</p>'+
+    '</div>'+
+    /* سریال/تاریخ سمت چپ بصری (در RTL = آخر) */
+    '<div class="inv-header-col hcol-serial">'+
+      '<table><tbody>'+
+        '<tr><td>شماره سریال:</td><td>'+inv.serial+'</td></tr>'+
+        '<tr><td>تاریخ:</td><td dir="ltr">'+inv.date+'</td></tr>'+
+      '</tbody></table>'+
+    '</div>'+
+  '</div>'+
+
+  /* ── مشخصات فروشنده ── */
+  '<div class="inv-sec">'+
+    '<div class="inv-sec-t">مشخصات فروشنده</div>'+
+    '<div class="inv-sec-b">'+
+      '<div class="info-grid">'+
+        '<div class="info-item"><b>نام شخص حقیقی / حقوقی:</b><span>طرح و نظارت اسپادانا</span></div>'+
+        '<div class="info-item"><b>شماره اقتصادی:</b><span>411488451564</span></div>'+
+        '<div class="info-item"><b>شناسه ملی / شماره ثبت:</b><span>14004629583 / 465303</span></div>'+
+      '</div>'+
+      '<div class="info-grid" style="margin-top:3px">'+
+        '<div class="info-item"><b>استان:</b><span>تهران</span></div>'+
+        '<div class="info-item"><b>شهرستان:</b><span>تهران</span></div>'+
+        '<div class="info-item"><b>کدپستی:</b><span>1439744444</span></div>'+
+      '</div>'+
+      '<div class="info-addr" style="margin-top:3px">'+
+        '<b>نشانی:</b><span>امیرآباد شمالی، نبش خیابان چهاردهم، پلاک ۱۹۴۵ واحد ۲۴</span>'+
+        '<span style="margin-right:16px"><b>تلفن / نمابر:</b> <span dir="ltr">02188633892 / 02182809833</span></span>'+
+      '</div>'+
+    '</div>'+
+  '</div>'+
+
+  /* ── مشخصات خریدار ── */
+  '<div class="inv-sec">'+
+    '<div class="inv-sec-t">مشخصات خریدار</div>'+
+    '<div class="inv-sec-b">'+
+      '<div class="info-grid">'+
+        '<div class="info-item"><b>نام شخص حقیقی / حقوقی:</b><span>'+esc(inv.name)+'</span></div>'+
+        '<div class="info-item"><b>شماره اقتصادی:</b><span>'+esc(inv.eco||'---')+'</span></div>'+
+        '<div class="info-item"><b>شناسه ملی / شماره ثبت:</b><span>'+esc(inv.natid||'---')+'</span></div>'+
+      '</div>'+
+      '<div class="info-grid" style="margin-top:3px">'+
+        '<div class="info-item"><b>استان:</b><span>'+esc(inv.prov||'---')+'</span></div>'+
+        '<div class="info-item"><b>شهرستان:</b><span>'+esc(inv.city||'---')+'</span></div>'+
+        '<div class="info-item"><b>کدپستی:</b><span>'+esc(inv.postal||'---')+'</span></div>'+
+      '</div>'+
+      '<div class="info-addr" style="margin-top:3px">'+
+        '<b>نشانی:</b><span>'+esc(inv.addr||'---')+'</span>'+
+        '<span style="margin-right:16px"><b>شماره تلفن / نمابر:</b> <span dir="ltr">'+esc(inv.phone||'---')+'</span></span>'+
+      '</div>'+
+    '</div>'+
+  '</div>'+
+
+  /* ── عنوان جدول ── */
+  '<div class="inv-sec" style="margin-bottom:0;border-bottom:none;border-radius:4px 4px 0 0">'+
+    '<div class="inv-sec-t">مشخصات کالا یا خدمات مورد معامله</div>'+
+  '</div>'+
+
+  /* ── جدول کالا - ۹ ستون دقیق مطابق اکسل ── */
+  '<table class="inv-table">'+
+    '<thead><tr>'+
+      '<th style="width:28px">ردیف</th>'+
+      '<th>شرح کالا یا خدمات</th>'+
+      '<th style="width:45px">مقدار</th>'+
+      '<th style="width:45px">واحد</th>'+
+      '<th style="width:88px">مبلغ واحد<br>(ریال)</th>'+
+      '<th style="width:88px">مبلغ کل<br>(ریال)</th>'+
+      '<th style="width:80px">مبلغ تخفیف<br>(ریال)</th>'+
+      '<th style="width:92px">مبلغ کل پس از<br>تخفیف (ریال)</th>'+
+      '<th style="width:92px">جمع مالیات<br>و عوارض (ریال)</th>'+
+    '</tr></thead>'+
+    '<tbody>'+rows+
+    '<tr class="sum-row">'+
+      '<td colspan="2" style="text-align:right;padding-right:8px">جمع کل</td>'+
+      '<td>'+fmt(tq)+'</td><td></td><td></td>'+
+      '<td>'+fmt(inv.subtotal)+'</td>'+
+      '<td>'+fmt(inv.discount)+'</td>'+
+      '<td>'+fmt(inv.afterDisc)+'</td>'+
+      '<td>'+fmt(inv.vat)+'</td>'+
+    '</tr>'+
+    '</tbody>'+
+  '</table>'+
+
+  /* ── پایین: بانک + جمع‌بندی ── */
+  '<div class="inv-bottom">'+
+    '<div class="inv-bank">'+
+      '<div class="inv-bank-t">شرایط و نحوه فروش &nbsp;&nbsp; نقدی ☐ &nbsp;&nbsp; غیرنقدی ☐</div>'+
+      '<div class="inv-bank-b">'+
+        '<b>بانک صادرات ایران</b><br>'+
+        'شماره حساب: <span dir="ltr">0211572513007</span><br>'+
+        'شماره شبا: <span dir="ltr">IR 10 0190 0000 0021 1572 5130 07</span>'+
+        (inv.notes ? '<br><b>توضیحات:</b> '+esc(inv.notes) : '')+
+      '</div>'+
+    '</div>'+
+    '<div class="inv-totals">'+
+      '<div class="tot-row"><span>جمع مبلغ کل</span><span>'+fmt(inv.subtotal)+'</span></div>'+
+      '<div class="tot-row"><span>جمع مبلغ تخفیف</span><span>'+fmt(inv.discount)+'</span></div>'+
+      '<div class="tot-row"><span>جمع مبلغ کل پس از تخفیف</span><span>'+fmt(inv.afterDisc)+'</span></div>'+
+      '<div class="tot-row"><span>جمع مالیات و عوارض (۱۰٪)</span><span>'+fmt(inv.vat)+'</span></div>'+
+      '<div class="tot-row"><span>مبلغ قابل پرداخت (ریال)</span><span>'+fmt(inv.total)+'</span></div>'+
+    '</div>'+
+  '</div>'+
+
+  /* ── امضاء با جابجایی تصادفی ── */
+  (function(){
+    function rnd(min,max){ return (Math.random()*(max-min)+min).toFixed(1); }
+    // مهر: جابجایی تصادفی ±8px افقی و ±6px عمودی + چرخش ±4 درجه
+    var sTop=rnd(-6,6), sLeft=rnd(-8,8), sRot=rnd(-4,4);
+    // امضاء: جابجایی مستقل ولی گاهی روی مهر می‌افتد (50% احتمال overlap)
+    var overlap = Math.random()<0.5;
+    var gTop=rnd(-6,6), gLeft= overlap ? rnd(-30,10) : rnd(5,20), gRot=rnd(-3,3);
+    return '<div class="inv-sigs">'+
+      '<div class="sig-box" style="position:relative;overflow:visible">'+
+        '<div style="position:relative;height:80px">'+
+          '<img src="assets/stamp.jpg" style="position:absolute;width:2cm;height:2cm;object-fit:contain;mix-blend-mode:multiply;top:'+sTop+'px;left:calc(20% + '+sLeft+'px);transform:rotate('+sRot+'deg)" '+
+            'onerror="this.style.display=\'none\'">'+
+          '<img src="assets/signature.jpg" style="position:absolute;width:3cm;height:2cm;object-fit:contain;mix-blend-mode:multiply;top:'+gTop+'px;left:calc(35% + '+gLeft+'px);transform:rotate('+gRot+'deg)" '+
+            'onerror="this.style.display=\'none\'">'+
+        '</div>'+
+        '<div class="sig-line"></div>مهر و امضاء فروشنده'+
+      '</div>'+
+      '<div class="sig-box">'+
+        '<div style="height:80px"></div>'+
+        '<div class="sig-line"></div>مهر و امضاء خریدار'+
+      '</div>'+
+    '</div>';
+  })()+
+
+  /* ── شرایط ── */
+  '<div class="inv-terms">'+
+    '• بعد از پرداخت وجه، خریدار موظف است مشخصات رسمی شرکت و نماینده تحویل‌گیرنده کالا را جهت دریافت فاکتور رسمی اعلام نماید.&nbsp;&nbsp;&nbsp;'+
+    '• اعتبار این پیشنهاد قیمت از تاریخ صدور به مدت ۲ روز می‌باشد. هزینه حمل با مشتری است.<br>'+
+    '• در صورت عدم تسویه حساب و ترخیص کالا پس از حداکثر ۷ روز از زمان اعلام تکمیل ساخت و تأمین توسط تولیدکننده، هزینه انبارداری به مبلغ روزانه ۰.۲٪ ارزش کالا از خریدار اخذ خواهد گردید.'+
+  '</div>'+
+
+  /* ── فوتر ── */
+  '<div class="inv-footer">'+
+    '<span class="inv-footer-name">طرح و نظارت اسپادانا</span>'+
+    '<a class="inv-footer-site" href="https://espadanagroup.com" target="_blank">https://espadanagroup.com</a>'+
+    '<span class="inv-footer-name" style="direction:ltr">ESPADANA Design &amp; Supervision</span>'+
+  '</div>'+
+
+  '</div>'; // end inv-page
+
+  document.getElementById('print-content').innerHTML = html;
+}
+
+// ===== LIST =====
+function renderList(){
+  var list=getInvs().slice().reverse();
+  var c=document.getElementById('list-container');
+  if(!list.length){
+    c.innerHTML='<div class="empty"><div class="ic">🧾</div><p>هنوز فاکتوری ثبت نشده</p><p style="font-size:12px;margin-top:6px">دکمه «فاکتور جدید» را بزنید</p></div>';
+    return;
+  }
+  var html='<div class="card"><div class="card-b" style="padding:0">';
+  list.forEach(function(inv){
+    html+='<div class="list-item">'+
+      '<div class="list-badge">'+inv.serial+'</div>'+
+      '<div class="list-info" onclick="viewInv('+inv.serial+')">'+
+        '<div class="nm">'+esc(inv.name)+'</div>'+
+        '<div class="mt">'+inv.date+' | '+inv.items.length+' ردیف</div>'+
+        '<div class="am">'+fmt(inv.total)+' ریال</div>'+
+      '</div>'+
+      '<button class="btn-dl" onclick="delInv('+inv.serial+',event)">🗑</button>'+
+    '</div>';
+  });
+  c.innerHTML=html+'</div></div>';
+}
+function viewInv(s){ var inv=getInvs().find(function(i){return i.serial==s;}); if(inv) showPrint(inv); }
+function delInv(s,e){
+  e.stopPropagation();
+  if(confirm('پیش فاکتور شماره '+s+' حذف شود؟')){ delInvStore(s); renderList(); }
+}
+window.onload=function(){ showList(); };
+</script>
+</body>
+</html>
