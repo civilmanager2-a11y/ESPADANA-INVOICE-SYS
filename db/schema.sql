@@ -26,7 +26,7 @@ CREATE INDEX IF NOT EXISTS customers_normalized_name_idx ON customers (normalize
 CREATE INDEX IF NOT EXISTS customers_normalized_national_id_idx ON customers (normalized_national_id);
 
 CREATE TABLE IF NOT EXISTS invoices (
-  invoice_number bigint GENERATED ALWAYS AS IDENTITY (START WITH 345) PRIMARY KEY,
+  invoice_number bigint GENERATED ALWAYS AS IDENTITY (START WITH 380) PRIMARY KEY,
   customer_id bigint NOT NULL REFERENCES customers(id),
   issuer_mobile varchar(11) NOT NULL REFERENCES app_users(mobile),
   invoice_date varchar(20) NOT NULL,
