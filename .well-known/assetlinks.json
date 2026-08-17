@@ -1,0 +1,12 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "io.github.civilmanager2_a11y.twa",
+      "sha256_cert_fingerprints": [
+        "98:70:D9:92:A2:11:6F:DA:FA:AE:99:86:5D:1A:02:17:38:70:1B:9E:99:67:C3:61:4C:D1:57:84:34:C9:06:F9"
+      ]
+    }
+  }
+]
