@@ -1,0 +1,10 @@
+node_modules/
+.vercel/
+.env
+.env.*
+!.env.example
+*.keystore
+*.jks
+*.apk
+*.aab
+signing-key-info.txt

@@ -57,6 +57,24 @@ body{font-family:'Vazirmatn',Tahoma,sans-serif;background:#F0F4F8;color:#222;dir
 .empty{text-align:center;padding:60px 20px;color:#aaa}
 .empty .ic{font-size:64px;margin-bottom:12px}
 .req{color:#e53935;font-size:11px}
+.customer-lookup{position:relative}
+.customer-suggestions{display:none;position:absolute;top:100%;right:0;left:0;z-index:80;background:#fff;border:1px solid #90CAF9;border-radius:8px;box-shadow:0 6px 18px rgba(0,0,0,.16);max-height:240px;overflow:auto}
+.customer-suggestions.active{display:block}
+.customer-option{padding:9px 11px;border-bottom:1px solid #eee;cursor:pointer}
+.customer-option:last-child{border-bottom:none}
+.customer-option:hover{background:var(--light)}
+.customer-option b{display:block;color:#222}
+.customer-option span{font-size:11px;color:#666}
+.field-help{font-size:11px;color:#607D8B;margin-top:4px}
+.status-line{font-size:12px;color:#546E7A;text-align:center;margin-top:8px;min-height:20px}
+.btn-pdf:disabled{opacity:.55;cursor:wait}
+.modal-backdrop{display:none;position:fixed;inset:0;background:rgba(10,35,66,.72);z-index:500;align-items:center;justify-content:center;padding:18px}
+.modal-backdrop.active{display:flex}
+.modal-card{background:#fff;border-radius:14px;max-width:420px;width:100%;padding:20px;box-shadow:0 18px 50px rgba(0,0,0,.3)}
+.modal-card h2{color:var(--blue);font-size:18px;margin-bottom:8px}
+.modal-card p{font-size:13px;color:#555;line-height:1.9;margin-bottom:14px}
+.modal-error{color:#c62828;font-size:12px;min-height:20px;margin-top:8px}
+.user-chip{font-size:11px;padding:5px 10px}
 
 /* ===== PRINT / PDF ===== */
 @page { size: A4 landscape; margin: 5mm; }
@@ -217,10 +235,10 @@ table.inv-table .sum-row td {
     <div class="card">
       <div class="card-h">👤 مشخصات خریدار</div>
       <div class="card-b">
-        <div class="f"><label>نام شخص حقیقی / حقوقی <span class="req">*</span></label><input id="f-name" required placeholder="نام کامل یا نام شرکت"></div>
+        <div class="f customer-lookup"><label>نام شخص حقیقی / حقوقی <span class="req">*</span></label><input id="f-name" required autocomplete="off" placeholder="نام کامل یا نام شرکت" oninput="scheduleCustomerSearch(this.value)"><div class="field-help">با وارد کردن حداقل ۲ حرف، مشتریان قبلی نمایش داده می‌شوند.</div><div class="customer-suggestions" id="customer-suggestions"></div></div>
         <div class="r2">
           <div class="f"><label>شماره اقتصادی</label><input id="f-eco" inputmode="numeric"></div>
-          <div class="f"><label>شناسه ملی / شماره ثبت</label><input id="f-natid" placeholder="شناسه/ثبت"></div>
+          <div class="f customer-lookup"><label>شناسه ملی / شماره ثبت</label><input id="f-natid" autocomplete="off" placeholder="شناسه/ثبت" oninput="scheduleCustomerSearch(this.value)"></div>
         </div>
         <div class="r3">
           <div class="f"><label>استان</label><input id="f-prov" placeholder="تهران"></div>
@@ -246,9 +264,14 @@ table.inv-table .sum-row td {
     </div>
     <div class="card">
       <div class="card-h">📝 توضیحات</div>
-      <div class="card-b"><div class="f"><textarea id="f-notes" rows="2" placeholder="توضیحات (اختیاری)..."></textarea></div></div>
+      <div class="card-b">
+        <div class="f"><label>اعتبار فاکتور</label><textarea id="f-validity" rows="2">اعتبار این پیشنهاد قیمت از تاریخ صدور به مدت ۲ روز می‌باشد.</textarea></div>
+        <div class="f"><label>هزینه حمل</label><textarea id="f-shipping" rows="2">هزینه حمل با مشتری است.</textarea></div>
+        <div class="f"><label>توضیحات تکمیلی</label><textarea id="f-notes" rows="2" placeholder="توضیحات (اختیاری)..."></textarea></div>
+      </div>
     </div>
-    <button type="button" class="btn-pdf" onclick="generatePDF()">🖨️ صدور پیش فاکتور PDF</button>
+    <button type="button" class="btn-pdf" id="btn-generate" onclick="generatePDF()">🖨️ ثبت و صدور پیش فاکتور PDF</button>
+    <div class="status-line" id="save-status"></div>
     <div style="height:24px"></div>
   </form>
 </div>
@@ -264,6 +287,17 @@ table.inv-table .sum-row td {
     برای ذخیره PDF: «چاپ» ← <b>Save as PDF</b> را انتخاب کنید &nbsp;|&nbsp; تنظیم صفحه: <b>Landscape (افقی)</b>
   </div>
   <div id="print-content"></div>
+</div>
+
+<!-- FIRST-RUN USER REGISTRATION -->
+<div class="modal-backdrop" id="mobile-modal" role="dialog" aria-modal="true" aria-labelledby="mobile-modal-title">
+  <div class="modal-card">
+    <h2 id="mobile-modal-title">ثبت اقدام‌کننده</h2>
+    <p>شماره موبایل شما روی فاکتورهای صادرشده درج می‌شود و برای شناسایی اقدام‌کننده در سامانه مرکزی لازم است.</p>
+    <div class="f"><label>شماره موبایل <span class="req">*</span></label><input id="user-mobile" inputmode="tel" maxlength="11" dir="ltr" placeholder="09xxxxxxxxx"></div>
+    <button type="button" class="btn-pdf" id="btn-register-mobile" onclick="registerMobile()">ثبت و ادامه</button>
+    <div class="modal-error" id="mobile-error"></div>
+  </div>
 </div>
 
 <script>
@@ -288,9 +322,60 @@ function todayJ() {
   return j.y + '/' + j.m + '/' + j.d;
 }
 
-// ===== STORAGE =====
-function getSerial(){ return parseInt(localStorage.getItem('esp_serial')||'345'); }
-function nextSerial(){ var s=getSerial(); localStorage.setItem('esp_serial',s+1); return s; }
+// ===== API / USER / STORAGE =====
+var customerMatches=[], customerSearchTimer=null;
+function getUserMobile(){ return localStorage.getItem('esp_user_mobile')||''; }
+function validMobile(v){ return /^09\d{9}$/.test(toEnglishDigits(v).replace(/\D/g,'')); }
+function toEnglishDigits(v){ return (v||'').toString().replace(/[۰-۹]/g,function(d){return '۰۱۲۳۴۵۶۷۸۹'.indexOf(d);}).replace(/[٠-٩]/g,function(d){return '٠١٢٣٤٥٦٧٨٩'.indexOf(d);}); }
+async function api(path,options){
+  var res=await fetch(path,Object.assign({headers:{'Content-Type':'application/json'}},options||{}));
+  var data={}; try{data=await res.json();}catch(e){}
+  if(!res.ok) throw new Error(data.error||'خطا در ارتباط با سرور');
+  return data;
+}
+function showMobileModal(){
+  document.getElementById('user-mobile').value=getUserMobile();
+  document.getElementById('mobile-modal').classList.add('active');
+  setTimeout(function(){document.getElementById('user-mobile').focus();},50);
+}
+function closeMobileModal(){ document.getElementById('mobile-modal').classList.remove('active'); updateTopbarActions(); }
+async function registerMobile(){
+  var input=document.getElementById('user-mobile'), mobile=toEnglishDigits(input.value).replace(/\D/g,'');
+  var err=document.getElementById('mobile-error'), btn=document.getElementById('btn-register-mobile');
+  if(!validMobile(mobile)){err.textContent='شماره موبایل باید با 09 شروع شود و ۱۱ رقم باشد.';return;}
+  err.textContent='در حال ثبت...'; btn.disabled=true;
+  try{ await api('/api/users',{method:'POST',body:JSON.stringify({mobile:mobile})}); localStorage.setItem('esp_user_mobile',mobile); err.textContent=''; closeMobileModal(); }
+  catch(e){err.textContent=e.message;}
+  finally{btn.disabled=false;}
+}
+function listActions(){
+  var mobile=getUserMobile();
+  return '<button class="btn-sm user-chip" onclick="showMobileModal()">'+(mobile?'📱 '+esc(mobile):'ثبت موبایل')+'</button> <button class="btn-sm" onclick="showForm()">➕ فاکتور جدید</button>';
+}
+function updateTopbarActions(){ if(document.getElementById('screen-list').classList.contains('active')) document.getElementById('topbar-actions').innerHTML=listActions(); }
+function scheduleCustomerSearch(value){
+  clearTimeout(customerSearchTimer);
+  var q=(value||'').trim();
+  if(q.length<2){hideCustomerSuggestions();return;}
+  customerSearchTimer=setTimeout(function(){searchCustomers(q);},280);
+}
+async function searchCustomers(q){
+  try{var data=await api('/api/customers?q='+encodeURIComponent(q),{method:'GET',headers:{}}); customerMatches=data.customers||[]; renderCustomerSuggestions();}
+  catch(e){hideCustomerSuggestions();}
+}
+function renderCustomerSuggestions(){
+  var box=document.getElementById('customer-suggestions');
+  if(!customerMatches.length){hideCustomerSuggestions();return;}
+  box.innerHTML=customerMatches.map(function(c,i){return '<div class="customer-option" onclick="selectCustomer('+i+')"><b>'+esc(c.name)+'</b><span>شناسه: '+esc(c.natid||'---')+' | تلفن: '+esc(c.phone||'---')+'</span></div>';}).join('');
+  box.classList.add('active');
+}
+function hideCustomerSuggestions(){var box=document.getElementById('customer-suggestions');if(box)box.classList.remove('active');}
+function selectCustomer(index){
+  var c=customerMatches[index]; if(!c)return;
+  var fields={name:'f-name',eco:'f-eco',natid:'f-natid',prov:'f-prov',city:'f-city',postal:'f-postal',addr:'f-addr',phone:'f-phone'};
+  Object.keys(fields).forEach(function(key){document.getElementById(fields[key]).value=c[key]||'';});
+  hideCustomerSuggestions();
+}
 function saveInv(inv){ var l=getInvs(); l.push(inv); localStorage.setItem('esp_invs',JSON.stringify(l)); }
 function getInvs(){ try{return JSON.parse(localStorage.getItem('esp_invs')||'[]');}catch(e){return[];} }
 function delInvStore(s){ var l=getInvs().filter(function(i){return i.serial!=s;}); localStorage.setItem('esp_invs',JSON.stringify(l)); }
@@ -364,13 +449,14 @@ function setTopbar(title,actions){
 function showList(){
   ['screen-list','screen-form','screen-print'].forEach(function(id){document.getElementById(id).classList.remove('active');});
   document.getElementById('screen-list').classList.add('active');
-  setTopbar('پیش فاکتور','<button class="btn-sm" onclick="showForm()">➕ فاکتور جدید</button>');
+  setTopbar('پیش فاکتور',listActions());
   renderList();
 }
 function showForm(){
+  if(!getUserMobile()){showMobileModal();return;}
   itemIdx=0; document.getElementById('items-container').innerHTML='';
   document.getElementById('inv-form').reset();
-  document.getElementById('f-serial').textContent=getSerial();
+  document.getElementById('f-serial').textContent='خودکار';
   document.getElementById('f-date').textContent=todayJ();
   ['screen-list','screen-form','screen-print'].forEach(function(id){document.getElementById(id).classList.remove('active');});
   document.getElementById('screen-form').classList.add('active');
@@ -387,7 +473,7 @@ function showPrint(inv){
 function backToList(){ showList(); }
 
 // ===== GENERATE =====
-function generatePDF(){
+async function generatePDF(){
   var name=document.getElementById('f-name').value.trim();
   if(!name){alert('لطفاً نام خریدار را وارد کنید');return;}
   var items=getItemsData();
@@ -396,11 +482,11 @@ function generatePDF(){
     if(!items[i].desc){alert('شرح ردیف '+(i+1)+' را وارد کنید');return;}
     if(!items[i].price){alert('مبلغ واحد ردیف '+(i+1)+' را وارد کنید');return;}
   }
-  var serial=nextSerial(), date=document.getElementById('f-date').textContent;
+  var date=document.getElementById('f-date').textContent;
   var sub=0,disc=0,aft=0,vat=0;
   items.forEach(function(i){sub+=i.total;disc+=i.discount;aft+=i.afterDisc;vat+=i.vat;});
   var inv={
-    serial:serial, date:date,
+    date:date,
     name:name,
     eco:document.getElementById('f-eco').value,
     natid:document.getElementById('f-natid').value,
@@ -410,10 +496,19 @@ function generatePDF(){
     addr:document.getElementById('f-addr').value,
     phone:document.getElementById('f-phone').value,
     notes:document.getElementById('f-notes').value,
+    validityTerms:document.getElementById('f-validity').value,
+    shippingTerms:document.getElementById('f-shipping').value,
     items:items,
     subtotal:sub, discount:disc, afterDisc:aft, vat:vat, total:aft+vat
   };
-  saveInv(inv); showPrint(inv);
+  var btn=document.getElementById('btn-generate'), status=document.getElementById('save-status');
+  btn.disabled=true; status.textContent='در حال ثبت در دیتابیس و دریافت شماره سراسری...';
+  try{
+    var result=await api('/api/invoices',{method:'POST',body:JSON.stringify({issuerMobile:getUserMobile(),invoice:inv})});
+    inv.serial=result.invoiceNumber; inv.issuerMobile=getUserMobile(); inv.customerId=result.customerId;
+    saveInv(inv); status.textContent=''; showPrint(inv);
+  }catch(e){status.textContent='';alert(e.message);}
+  finally{btn.disabled=false;}
 }
 
 // ===== STAMP & SIGNATURE - از فایل واقعی =====
@@ -593,13 +688,14 @@ function renderPrint(inv){
   /* ── شرایط ── */
   '<div class="inv-terms">'+
     '• بعد از پرداخت وجه، خریدار موظف است مشخصات رسمی شرکت و نماینده تحویل‌گیرنده کالا را جهت دریافت فاکتور رسمی اعلام نماید.&nbsp;&nbsp;&nbsp;'+
-    '• اعتبار این پیشنهاد قیمت از تاریخ صدور به مدت ۲ روز می‌باشد. هزینه حمل با مشتری است.<br>'+
+    '• '+esc(inv.validityTerms||'اعتبار این پیشنهاد قیمت از تاریخ صدور به مدت ۲ روز می‌باشد.')+' '+esc(inv.shippingTerms||'هزینه حمل با مشتری است.')+'<br>'+
     '• در صورت عدم تسویه حساب و ترخیص کالا پس از حداکثر ۷ روز از زمان اعلام تکمیل ساخت و تأمین توسط تولیدکننده، هزینه انبارداری به مبلغ روزانه ۰.۲٪ ارزش کالا از خریدار اخذ خواهد گردید.'+
   '</div>'+
 
   /* ── فوتر ── */
   '<div class="inv-footer">'+
     '<span class="inv-footer-name">طرح و نظارت اسپادانا</span>'+
+    '<span class="inv-footer-name" style="direction:rtl">اقدام کننده: <span dir="ltr">'+esc(inv.issuerMobile||'---')+'</span></span>'+
     '<a class="inv-footer-site" href="https://espadanagroup.com" target="_blank">https://espadanagroup.com</a>'+
     '<span class="inv-footer-name" style="direction:ltr">ESPADANA Design &amp; Supervision</span>'+
   '</div>'+
@@ -634,9 +730,13 @@ function renderList(){
 function viewInv(s){ var inv=getInvs().find(function(i){return i.serial==s;}); if(inv) showPrint(inv); }
 function delInv(s,e){
   e.stopPropagation();
-  if(confirm('پیش فاکتور شماره '+s+' حذف شود؟')){ delInvStore(s); renderList(); }
+  if(confirm('پیش فاکتور شماره '+s+' فقط از فهرست این دستگاه حذف شود؟ رکورد مرکزی برای حفظ شماره‌گذاری باقی می‌ماند.')){ delInvStore(s); renderList(); }
 }
-window.onload=function(){ showList(); };
+window.onload=function(){
+  showList();
+  if(!getUserMobile())showMobileModal();
+  document.addEventListener('click',function(e){if(!e.target.closest('.customer-lookup'))hideCustomerSuggestions();});
+};
 </script>
 </body>
 </html>

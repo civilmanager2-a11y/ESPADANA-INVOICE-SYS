@@ -1,0 +1,12 @@
+{
+  "name": "espadana-invoice-sys",
+  "version": "2.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test"
+  },
+  "dependencies": {
+    "@neondatabase/serverless": "^1.0.1"
+  }
+}
