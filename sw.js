@@ -1,4 +1,4 @@
-const CACHE = 'espadana-v3';
+const CACHE = 'espadana-v4-auth';
 const ASSETS = [
   '/',
   '/index.html',

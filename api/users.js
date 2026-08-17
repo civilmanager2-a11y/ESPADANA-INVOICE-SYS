@@ -1,9 +1,11 @@
 import { getDatabase } from "./_db.js";
+import { requireAuth } from "./_auth.js";
 import { allowRequest, isValidMobile, normalizeMobile, readJsonBody, sendJson } from "./_utils.js";
 
 export default async function handler(request, response) {
   if (!allowRequest(request, response, ["POST", "OPTIONS"])) return;
   if (request.method !== "POST") return sendJson(response, 405, { error: "Method not allowed" });
+  if (!requireAuth(request, response)) return;
 
   try {
     const body = await readJsonBody(request);

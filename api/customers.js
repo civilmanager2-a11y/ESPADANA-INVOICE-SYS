@@ -1,9 +1,11 @@
 import { getDatabase } from "./_db.js";
+import { requireAuth } from "./_auth.js";
 import { allowRequest, normalizeName, normalizeNationalId, sendJson } from "./_utils.js";
 
 export default async function handler(request, response) {
   if (!allowRequest(request, response, ["GET", "OPTIONS"])) return;
   if (request.method !== "GET") return sendJson(response, 405, { error: "Method not allowed" });
+  if (!requireAuth(request, response)) return;
 
   const rawQuery = String(request.query?.q ?? "").trim().slice(0, 100);
   if (rawQuery.length < 2) return sendJson(response, 200, { customers: [] });

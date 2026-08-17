@@ -1,9 +1,11 @@
 import { getDatabase } from "./_db.js";
+import { requireAuth } from "./_auth.js";
 import { allowRequest, readJsonBody, sendJson, validateInvoiceInput } from "./_utils.js";
 
 export default async function handler(request, response) {
   if (!allowRequest(request, response, ["POST", "OPTIONS"])) return;
   if (request.method !== "POST") return sendJson(response, 405, { error: "Method not allowed" });
+  if (!requireAuth(request, response)) return;
 
   try {
     const validation = validateInvoiceInput(await readJsonBody(request));

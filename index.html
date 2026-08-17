@@ -75,6 +75,9 @@ body{font-family:'Vazirmatn',Tahoma,sans-serif;background:#F0F4F8;color:#222;dir
 .modal-card p{font-size:13px;color:#555;line-height:1.9;margin-bottom:14px}
 .modal-error{color:#c62828;font-size:12px;min-height:20px;margin-top:8px}
 .user-chip{font-size:11px;padding:5px 10px}
+#login-modal{z-index:700}
+.login-lock{text-align:center;font-size:42px;margin-bottom:6px}
+.login-card{max-width:380px}
 
 /* ===== PRINT / PDF ===== */
 @page { size: A4 landscape; margin: 5mm; }
@@ -290,6 +293,17 @@ table.inv-table .sum-row td {
 </div>
 
 <!-- FIRST-RUN USER REGISTRATION -->
+<div class="modal-backdrop active" id="login-modal" role="dialog" aria-modal="true" aria-labelledby="login-modal-title">
+  <div class="modal-card login-card">
+    <div class="login-lock">🔐</div>
+    <h2 id="login-modal-title">ورود به سامانه فاکتور</h2>
+    <p>برای مشاهده سامانه و صدور فاکتور، رمز ورود را وارد کنید.</p>
+    <div class="f"><label>رمز ورود <span class="req">*</span></label><input id="login-password" type="password" inputmode="numeric" autocomplete="current-password" dir="ltr" onkeydown="if(event.key==='Enter')login()"></div>
+    <button type="button" class="btn-pdf" id="btn-login" onclick="login()">ورود</button>
+    <div class="modal-error" id="login-error"></div>
+  </div>
+</div>
+
 <div class="modal-backdrop" id="mobile-modal" role="dialog" aria-modal="true" aria-labelledby="mobile-modal-title">
   <div class="modal-card">
     <h2 id="mobile-modal-title">ثبت اقدام‌کننده</h2>
@@ -328,10 +342,37 @@ function getUserMobile(){ return localStorage.getItem('esp_user_mobile')||''; }
 function validMobile(v){ return /^09\d{9}$/.test(toEnglishDigits(v).replace(/\D/g,'')); }
 function toEnglishDigits(v){ return (v||'').toString().replace(/[۰-۹]/g,function(d){return '۰۱۲۳۴۵۶۷۸۹'.indexOf(d);}).replace(/[٠-٩]/g,function(d){return '٠١٢٣٤٥٦٧٨٩'.indexOf(d);}); }
 async function api(path,options){
-  var res=await fetch(path,Object.assign({headers:{'Content-Type':'application/json'}},options||{}));
+  var res=await fetch(path,Object.assign({credentials:'same-origin',headers:{'Content-Type':'application/json'}},options||{}));
   var data={}; try{data=await res.json();}catch(e){}
+  if(res.status===401&&path!=='/api/auth')showLoginModal('نشست ورود پایان یافته است؛ دوباره وارد شوید.');
   if(!res.ok) throw new Error(data.error||'خطا در ارتباط با سرور');
   return data;
+}
+function showLoginModal(message){
+  document.getElementById('login-modal').classList.add('active');
+  document.getElementById('login-error').textContent=message||'';
+  setTimeout(function(){document.getElementById('login-password').focus();},50);
+}
+function closeLoginModal(){document.getElementById('login-modal').classList.remove('active');document.getElementById('login-password').value='';}
+async function login(){
+  var input=document.getElementById('login-password'), err=document.getElementById('login-error'), btn=document.getElementById('btn-login');
+  if(!input.value){err.textContent='رمز ورود را وارد کنید.';return;}
+  err.textContent='در حال بررسی...';btn.disabled=true;
+  try{await api('/api/auth',{method:'POST',body:JSON.stringify({password:input.value})});closeLoginModal();showList();if(!getUserMobile())showMobileModal();}
+  catch(e){err.textContent=e.message;input.select();}
+  finally{btn.disabled=false;}
+}
+async function logout(){
+  try{await api('/api/auth',{method:'DELETE'});}catch(e){}
+  showLoginModal('از سامانه خارج شدید.');
+}
+async function initializeApp(){
+  try{
+    var status=await api('/api/auth',{method:'GET',headers:{}});
+    if(!status.configured){showLoginModal('رمز ورود روی سرور تنظیم نشده است.');return;}
+    if(!status.authenticated){showLoginModal();return;}
+    closeLoginModal();showList();if(!getUserMobile())showMobileModal();
+  }catch(e){showLoginModal(e.message);}
 }
 function showMobileModal(){
   document.getElementById('user-mobile').value=getUserMobile();
@@ -350,7 +391,7 @@ async function registerMobile(){
 }
 function listActions(){
   var mobile=getUserMobile();
-  return '<button class="btn-sm user-chip" onclick="showMobileModal()">'+(mobile?'📱 '+esc(mobile):'ثبت موبایل')+'</button> <button class="btn-sm" onclick="showForm()">➕ فاکتور جدید</button>';
+  return '<button class="btn-sm user-chip" onclick="showMobileModal()">'+(mobile?'📱 '+esc(mobile):'ثبت موبایل')+'</button> <button class="btn-sm" onclick="showForm()">➕ فاکتور جدید</button> <button class="btn-sm user-chip" onclick="logout()">خروج</button>';
 }
 function updateTopbarActions(){ if(document.getElementById('screen-list').classList.contains('active')) document.getElementById('topbar-actions').innerHTML=listActions(); }
 function scheduleCustomerSearch(value){
@@ -733,8 +774,7 @@ function delInv(s,e){
   if(confirm('پیش فاکتور شماره '+s+' فقط از فهرست این دستگاه حذف شود؟ رکورد مرکزی برای حفظ شماره‌گذاری باقی می‌ماند.')){ delInvStore(s); renderList(); }
 }
 window.onload=function(){
-  showList();
-  if(!getUserMobile())showMobileModal();
+  initializeApp();
   document.addEventListener('click',function(e){if(!e.target.closest('.customer-lookup'))hideCustomerSuggestions();});
 };
 </script>
