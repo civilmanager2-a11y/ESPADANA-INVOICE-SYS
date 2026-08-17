@@ -56,6 +56,17 @@ body{font-family:'Vazirmatn',Tahoma,sans-serif;background:#F0F4F8;color:#222;dir
 .btn-dl{background:none;border:none;color:#e53935;font-size:20px;cursor:pointer;padding:4px}
 .empty{text-align:center;padding:60px 20px;color:#aaa}
 .empty .ic{font-size:64px;margin-bottom:12px}
+.list-toolbar{display:flex;gap:8px;align-items:center;margin-bottom:10px}
+.list-search{flex:1;border:1.5px solid #90CAF9;border-radius:10px;padding:9px 11px;font-family:inherit;font-size:13px;background:#fff}
+.list-search:focus{outline:none;border-color:var(--blue)}
+.list-refresh{border:none;border-radius:10px;background:var(--blue);color:#fff;padding:9px 12px;font-family:inherit;font-size:13px;cursor:pointer;white-space:nowrap}
+.list-refresh:disabled{opacity:.55;cursor:wait}
+.sync-state{font-size:11px;color:#607D8B;margin:-2px 2px 9px;min-height:18px}
+.sync-state.error{color:#c62828}
+.list-pagination{display:flex;justify-content:space-between;align-items:center;gap:8px;margin:10px 2px 18px}
+.list-pagination button{border:1px solid #90CAF9;border-radius:9px;background:#fff;color:var(--blue);padding:7px 13px;font-family:inherit;cursor:pointer}
+.list-pagination button:disabled{opacity:.4;cursor:default}
+.list-pagination span{font-size:12px;color:#546E7A}
 .req{color:#e53935;font-size:11px}
 .customer-lookup{position:relative}
 .customer-suggestions{display:none;position:absolute;top:100%;right:0;left:0;z-index:80;background:#fff;border:1px solid #90CAF9;border-radius:8px;box-shadow:0 6px 18px rgba(0,0,0,.16);max-height:240px;overflow:auto}
@@ -342,7 +353,8 @@ function todayJ() {
 }
 
 // ===== API / USER / STORAGE =====
-var customerMatches=[], customerSearchTimer=null;
+var customerMatches=[], customerSearchTimer=null, invoiceSearchTimer=null;
+var invoiceListState={items:[],page:1,limit:25,total:0,hasMore:false,query:'',loading:false,offline:false,error:''};
 function getUserMobile(){ return localStorage.getItem('esp_user_mobile')||''; }
 function validMobile(v){ return /^09\d{9}$/.test(toEnglishDigits(v).replace(/\D/g,'')); }
 function toEnglishDigits(v){ return (v||'').toString().replace(/[۰-۹]/g,function(d){return '۰۱۲۳۴۵۶۷۸۹'.indexOf(d);}).replace(/[٠-٩]/g,function(d){return '٠١٢٣٤٥٦٧٨٩'.indexOf(d);}); }
@@ -422,9 +434,20 @@ function selectCustomer(index){
   Object.keys(fields).forEach(function(key){document.getElementById(fields[key]).value=c[key]||'';});
   hideCustomerSuggestions();
 }
-function saveInv(inv){ if(!inv.sellerMarkLayout)inv.sellerMarkLayout=createSellerMarkLayout(inv.serial); var l=getInvs(); l.push(inv); localStorage.setItem('esp_invs',JSON.stringify(l)); }
+function saveInv(inv){
+  if(!inv.sellerMarkLayout)inv.sellerMarkLayout=createSellerMarkLayout(inv.serial);
+  var l=getInvs().filter(function(item){return item.serial!=inv.serial;});
+  l.push(inv); localStorage.setItem('esp_invs',JSON.stringify(l.slice(-100)));
+}
 function getInvs(){ try{return JSON.parse(localStorage.getItem('esp_invs')||'[]');}catch(e){return[];} }
-function delInvStore(s){ var l=getInvs().filter(function(i){return i.serial!=s;}); localStorage.setItem('esp_invs',JSON.stringify(l)); }
+function invoiceSummary(inv){return {serial:inv.serial,date:inv.date,name:inv.name,issuerMobile:inv.issuerMobile,total:inv.total,itemCount:inv.itemCount!=null?inv.itemCount:(inv.items||[]).length,createdAt:inv.createdAt};}
+function getCachedInvoiceSummaries(){try{return JSON.parse(localStorage.getItem('esp_invoice_summaries')||'[]');}catch(e){return[];}}
+function cacheInvoiceSummaries(items){
+  var map={};
+  getCachedInvoiceSummaries().concat(getInvs().map(invoiceSummary)).concat(items||[]).forEach(function(item){if(item&&item.serial)map[item.serial]=invoiceSummary(item);});
+  var merged=Object.keys(map).map(function(key){return map[key];}).sort(function(a,b){return Number(b.serial)-Number(a.serial);}).slice(0,200);
+  localStorage.setItem('esp_invoice_summaries',JSON.stringify(merged));
+}
 
 // ===== NUMBERS =====
 function fmt(n){ if(!n&&n!==0) return '-'; return Math.round(n).toString().replace(/\B(?=(\d{3})+(?!\d))/g,','); }
@@ -492,11 +515,11 @@ function setTopbar(title,actions){
   document.getElementById('topbar-title').textContent=title;
   document.getElementById('topbar-actions').innerHTML=actions;
 }
-function showList(){
+function showList(page){
   ['screen-list','screen-form','screen-print'].forEach(function(id){document.getElementById(id).classList.remove('active');});
   document.getElementById('screen-list').classList.add('active');
   setTopbar('پیش فاکتور',listActions());
-  renderList();
+  loadInvoices(page||invoiceListState.page||1);
 }
 function showForm(){
   if(!getUserMobile()){showMobileModal();return;}
@@ -610,7 +633,7 @@ async function generatePDF(){
   try{
     var result=await api('/api/invoices',{method:'POST',body:JSON.stringify({issuerMobile:getUserMobile(),invoice:inv})});
     inv.serial=result.invoiceNumber; inv.issuerMobile=getUserMobile(); inv.customerId=result.customerId;
-    saveInv(inv); status.textContent=''; showPrint(inv);
+    saveInv(inv); cacheInvoiceSummaries([invoiceSummary(inv)]); status.textContent=''; showPrint(inv);
   }catch(e){status.textContent='';alert(e.message);}
   finally{btn.disabled=false;}
 }
@@ -627,7 +650,7 @@ var SIG_IMG = '<img src="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEAeAB4AAD/2wBD
   'onerror="this.outerHTML=\'<div style=&quot;height:2cm;width:3cm&quot;></div>\'">';
 
 // ===== RENDER PRINT - مطابق دقیق اکسل =====
-function esc(s){ return (s||'').toString().replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function esc(s){ return (s||'').toString().replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
 
 function renderPrint(inv){
   var tq=0; inv.items.forEach(function(i){tq+=i.qty;});
@@ -811,35 +834,76 @@ function renderPrint(inv){
 }
 
 // ===== LIST =====
+function setListStatus(message,isError){
+  var el=document.getElementById('list-sync-state');
+  if(el){el.textContent=message||'';el.className='sync-state'+(isError?' error':'');}
+}
+function scheduleInvoiceSearch(value){
+  invoiceListState.query=(value||'').trim(); clearTimeout(invoiceSearchTimer);
+  invoiceSearchTimer=setTimeout(function(){loadInvoices(1);},350);
+}
+async function loadInvoices(page){
+  if(invoiceListState.loading){clearTimeout(invoiceSearchTimer);invoiceSearchTimer=setTimeout(function(){loadInvoices(page);},150);return;}
+  invoiceListState.page=Math.max(1,Number(page)||1); invoiceListState.loading=true; invoiceListState.error=''; invoiceListState.offline=false;
+  renderList();
+  try{
+    var path='/api/invoices?page='+invoiceListState.page+'&limit='+invoiceListState.limit+'&q='+encodeURIComponent(invoiceListState.query);
+    var data=await api(path,{method:'GET',headers:{}});
+    invoiceListState.items=data.invoices||[]; invoiceListState.page=data.page||invoiceListState.page;
+    invoiceListState.total=data.total||0; invoiceListState.hasMore=Boolean(data.hasMore);
+    cacheInvoiceSummaries(invoiceListState.items);
+  }catch(e){
+    var cached=getCachedInvoiceSummaries();
+    invoiceListState.items=cached.filter(function(inv){
+      var q=invoiceListState.query.toLowerCase();
+      return !q||String(inv.serial).indexOf(q)>=0||(inv.name||'').toLowerCase().indexOf(q)>=0||(inv.issuerMobile||'').indexOf(q)>=0;
+    });
+    invoiceListState.page=1; invoiceListState.total=invoiceListState.items.length; invoiceListState.hasMore=false;
+    invoiceListState.offline=true; invoiceListState.error=e.message;
+  }finally{invoiceListState.loading=false;renderList();}
+}
 function renderList(){
-  var list=getInvs().slice().reverse();
+  var list=invoiceListState.items;
   var c=document.getElementById('list-container');
+  var toolbar='<div class="list-toolbar"><input class="list-search" aria-label="جستجوی فاکتورها" placeholder="جستجو: شماره، مشتری، شناسه یا موبایل" value="'+esc(invoiceListState.query)+'" oninput="scheduleInvoiceSearch(this.value)"><button class="list-refresh" onclick="loadInvoices(1)" '+(invoiceListState.loading?'disabled':'')+'>↻ بروزرسانی</button></div>'+
+    '<div id="list-sync-state" class="sync-state'+(invoiceListState.error?' error':'')+'">'+(invoiceListState.loading?'در حال همگام‌سازی فاکتورهای همه کاربران...':invoiceListState.offline?'اتصال به سرور برقرار نیست؛ فهرست ذخیره‌شده این دستگاه نمایش داده می‌شود.':'نمایش '+fmt(invoiceListState.total)+' فاکتور ثبت‌شده در سامانه مرکزی')+'</div>';
   if(!list.length){
-    c.innerHTML='<div class="empty"><div class="ic">🧾</div><p>هنوز فاکتوری ثبت نشده</p><p style="font-size:12px;margin-top:6px">دکمه «فاکتور جدید» را بزنید</p></div>';
+    c.innerHTML=toolbar+'<div class="empty"><div class="ic">🧾</div><p>'+(invoiceListState.loading?'در حال دریافت فاکتورها...':invoiceListState.query?'فاکتوری با این مشخصات پیدا نشد':'هنوز فاکتوری ثبت نشده')+'</p><p style="font-size:12px;margin-top:6px">'+(invoiceListState.loading?'لطفاً چند لحظه صبر کنید':'دکمه «فاکتور جدید» را بزنید')+'</p></div>';
     return;
   }
-  var html='<div class="card"><div class="card-b" style="padding:0">';
+  var html=toolbar+'<div class="card"><div class="card-b" style="padding:0">';
   list.forEach(function(inv){
     html+='<div class="list-item">'+
       '<div class="list-badge">'+inv.serial+'</div>'+
       '<div class="list-info" onclick="viewInv('+inv.serial+')">'+
         '<div class="nm">'+esc(inv.name)+'</div>'+
-        '<div class="mt">'+inv.date+' | '+inv.items.length+' ردیف</div>'+
+        '<div class="mt">'+esc(inv.date||'---')+' | '+fmt(inv.itemCount||0)+' ردیف | اقدام‌کننده: <span dir="ltr">'+esc(inv.issuerMobile||'---')+'</span></div>'+
         '<div class="am">'+fmt(inv.total)+' ریال</div>'+
       '</div>'+
-      '<button class="btn-dl" onclick="delInv('+inv.serial+',event)">🗑</button>'+
+      '<span style="color:#90A4AE;font-size:20px">‹</span>'+
     '</div>';
   });
-  c.innerHTML=html+'</div></div>';
+  html+='</div></div>';
+  if(invoiceListState.page>1||invoiceListState.hasMore){
+    html+='<div class="list-pagination"><button onclick="loadInvoices('+(invoiceListState.page-1)+')" '+(invoiceListState.page<=1?'disabled':'')+'>صفحه قبل</button><span>صفحه '+fmt(invoiceListState.page)+' از '+fmt(Math.max(1,Math.ceil(invoiceListState.total/invoiceListState.limit)))+'</span><button onclick="loadInvoices('+(invoiceListState.page+1)+')" '+(!invoiceListState.hasMore?'disabled':'')+'>صفحه بعد</button></div>';
+  }
+  c.innerHTML=html;
 }
-function viewInv(s){ var inv=getInvs().find(function(i){return i.serial==s;}); if(inv) showPrint(inv); }
-function delInv(s,e){
-  e.stopPropagation();
-  if(confirm('پیش فاکتور شماره '+s+' فقط از فهرست این دستگاه حذف شود؟ رکورد مرکزی برای حفظ شماره‌گذاری باقی می‌ماند.')){ delInvStore(s); renderList(); }
+async function viewInv(s){
+  var cached=getInvs().find(function(inv){return inv.serial==s;});
+  setListStatus('در حال دریافت جزئیات فاکتور شماره '+s+'...');
+  try{
+    var data=await api('/api/invoices?number='+encodeURIComponent(s),{method:'GET',headers:{}});
+    saveInv(data.invoice); showPrint(data.invoice);
+  }catch(e){
+    if(cached){showPrint(cached);return;}
+    setListStatus(e.message,true); alert('جزئیات این فاکتور هنوز روی این دستگاه ذخیره نشده و اتصال به سرور برقرار نیست.');
+  }
 }
 window.onload=function(){
   initializeApp();
   document.addEventListener('click',function(e){if(!e.target.closest('.customer-lookup'))hideCustomerSuggestions();});
+  document.addEventListener('visibilitychange',function(){if(!document.hidden&&document.getElementById('screen-list').classList.contains('active')&&!document.getElementById('login-modal').classList.contains('active'))loadInvoices(1);});
 };
 </script>
 </body>

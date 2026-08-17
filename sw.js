@@ -1,4 +1,4 @@
-const CACHE = 'espadana-v5-print-marks';
+const CACHE = 'espadana-v6-shared-invoices';
 const ASSETS = [
   '/',
   '/index.html',
