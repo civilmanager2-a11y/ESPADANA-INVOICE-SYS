@@ -84,6 +84,7 @@ body{font-family:'Vazirmatn',Tahoma,sans-serif;background:#F0F4F8;color:#222;dir
   .topbar,.no-print { display:none!important }
   #screen-print { display:block!important; padding:0!important; max-width:100%!important }
   .inv-page { padding:0; zoom:0.72 }
+  .seller-mark { -webkit-print-color-adjust:exact!important; print-color-adjust:exact!important; visibility:visible!important; }
 }
 
 /* Invoice page - landscape A4 */
@@ -188,6 +189,10 @@ table.inv-table .sum-row td {
 .sig-box { text-align:center; border:1px solid #ddd; border-radius:4px; padding:8px 5px 6px; font-size:11px; }
 .sig-box-inner { display:flex; align-items:center; justify-content:center; gap:6px; height:76px; }
 .sig-line { border-top:1px solid #555; width:100px; margin:0 auto 4px; }
+.seller-mark-area { position:relative!important; height:31mm!important; overflow:hidden!important; }
+.seller-mark { position:absolute!important; display:block!important; object-fit:contain!important; mix-blend-mode:normal!important; pointer-events:none; }
+.seller-stamp { width:3cm!important; height:3cm!important; opacity:.92; z-index:1; }
+.seller-signature { width:3.4cm!important; height:2.2cm!important; opacity:.94; z-index:2; }
 
 /* ─── TERMS ─── */
 .inv-terms { border:1px solid #ddd; border-radius:4px; padding:6px 10px; font-size:9.5px; color:#444; line-height:1.8; margin-bottom:5px; }
@@ -281,7 +286,7 @@ table.inv-table .sum-row td {
   <div class="no-print" style="background:var(--blue);color:#fff;padding:10px 14px;display:flex;justify-content:space-between;align-items:center;margin:-12px -12px 12px -12px">
     <button class="btn-sm" onclick="backToList()">← بازگشت</button>
     <span style="font-weight:700" id="print-title-bar">پیش‌نمایش فاکتور</span>
-    <button class="btn-sm" onclick="window.print()">🖨️ چاپ / PDF</button>
+    <button class="btn-sm" id="btn-print-invoice" onclick="printInvoice()">🖨️ چاپ / PDF</button>
   </div>
   <div class="no-print" style="background:#FFF9C4;border:1px solid #F9A825;border-radius:8px;padding:8px 12px;font-size:12px;margin-bottom:10px;text-align:center">
     برای ذخیره PDF: «چاپ» ← <b>Save as PDF</b> را انتخاب کنید &nbsp;|&nbsp; تنظیم صفحه: <b>Landscape (افقی)</b>
@@ -414,7 +419,7 @@ function selectCustomer(index){
   Object.keys(fields).forEach(function(key){document.getElementById(fields[key]).value=c[key]||'';});
   hideCustomerSuggestions();
 }
-function saveInv(inv){ var l=getInvs(); l.push(inv); localStorage.setItem('esp_invs',JSON.stringify(l)); }
+function saveInv(inv){ if(!inv.sellerMarkLayout)inv.sellerMarkLayout=createSellerMarkLayout(inv.serial); var l=getInvs(); l.push(inv); localStorage.setItem('esp_invs',JSON.stringify(l)); }
 function getInvs(){ try{return JSON.parse(localStorage.getItem('esp_invs')||'[]');}catch(e){return[];} }
 function delInvStore(s){ var l=getInvs().filter(function(i){return i.serial!=s;}); localStorage.setItem('esp_invs',JSON.stringify(l)); }
 
@@ -509,6 +514,64 @@ function showPrint(inv){
   renderPrint(inv);
 }
 function backToList(){ showList(); }
+
+// جای مهر و امضا برای هر فاکتور ثابت می‌ماند، اما بین سه چیدمان متفاوت پخش می‌شود.
+function createSellerMarkLayout(serial){
+  var seed=parseInt(String(serial||Date.now()).replace(/\D/g,''),10)||1;
+  var state=Math.imul(seed,0x9e3779b1)>>>0;
+  function next(){ state=(Math.imul(state,1664525)+1013904223)>>>0; return state/4294967296; }
+  var modes=[
+    {name:'signature-left',stampX:68,signatureX:29},
+    {name:'signature-right',stampX:31,signatureX:71},
+    {name:'overlap',stampX:46,signatureX:57}
+  ];
+  var mode=modes[state%modes.length];
+  return {
+    mode:mode.name,
+    stampX:mode.stampX+(next()*6-3), signatureX:mode.signatureX+(next()*6-3),
+    stampTop:(next()*1.8).toFixed(1), signatureTop:(4+next()*3).toFixed(1),
+    stampRotation:(next()*6-3).toFixed(1), signatureRotation:(next()*8-4).toFixed(1)
+  };
+}
+function applySellerMarkLayout(inv){
+  var box=document.querySelector('#print-content .inv-sigs .sig-box:first-child');
+  if(!box)return;
+  var images=box.querySelectorAll('img');
+  if(images.length<2)return;
+  var area=images[0].parentElement, stamp=images[0], signature=images[1];
+  var layout=inv.sellerMarkLayout||createSellerMarkLayout(inv.serial);
+  inv.sellerMarkLayout=layout;
+  area.classList.add('seller-mark-area');
+  stamp.onerror=null; signature.onerror=null;
+  stamp.src='assets/stamp-print.png?v=2'; signature.src='assets/signature-print.png?v=2';
+  stamp.alt='مهر فروشنده'; signature.alt='امضای فروشنده';
+  stamp.className='seller-mark seller-stamp'; signature.className='seller-mark seller-signature';
+  stamp.style.cssText='left:'+layout.stampX+'%;top:'+layout.stampTop+'mm;transform:translateX(-50%) rotate('+layout.stampRotation+'deg)';
+  signature.style.cssText='left:'+layout.signatureX+'%;top:'+layout.signatureTop+'mm;transform:translateX(-50%) rotate('+layout.signatureRotation+'deg)';
+}
+function waitForPrintImages(){
+  var images=Array.prototype.slice.call(document.querySelectorAll('#print-content img'));
+  return Promise.all(images.map(function(img){
+    return new Promise(function(resolve){
+      var done=function(){ if(img.decode){img.decode().catch(function(){}).then(resolve);}else{resolve();} };
+      if(img.complete){done();return;}
+      img.addEventListener('load',done,{once:true});
+      img.addEventListener('error',resolve,{once:true});
+      setTimeout(resolve,5000);
+    });
+  }));
+}
+async function printInvoice(){
+  var btn=document.getElementById('btn-print-invoice'), oldText=btn?btn.textContent:'';
+  if(btn){btn.disabled=true;btn.textContent='در حال آماده‌سازی تصاویر...';}
+  try{
+    await waitForPrintImages();
+    await new Promise(function(resolve){requestAnimationFrame(function(){requestAnimationFrame(resolve);});});
+    window.print();
+  }finally{
+    if(btn){btn.disabled=false;btn.textContent=oldText;}
+  }
+}
 
 // ===== GENERATE =====
 async function generatePDF(){
@@ -741,6 +804,7 @@ function renderPrint(inv){
   '</div>'; // end inv-page
 
   document.getElementById('print-content').innerHTML = html;
+  applySellerMarkLayout(inv);
 }
 
 // ===== LIST =====

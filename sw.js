@@ -1,10 +1,12 @@
-const CACHE = 'espadana-v4-auth';
+const CACHE = 'espadana-v5-print-marks';
 const ASSETS = [
   '/',
   '/index.html',
   '/manifest.json',
   '/assets/stamp.jpg',
   '/assets/SIGNATURE.jpg',
+  '/assets/stamp-print.png',
+  '/assets/signature-print.png',
   '/assets/icon-192.png',
   '/assets/icon-512.png'
 ];
