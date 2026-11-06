@@ -1,4 +1,4 @@
-const CACHE = 'espadana-v7-redinvoice';
+const CACHE = 'espadana-v8-capsules';
 const ASSETS = [
   '/',
   '/index.html',

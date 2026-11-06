@@ -12,17 +12,25 @@
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:'Vazirmatn',Tahoma,sans-serif;background:#F0F4F8;color:#222;direction:rtl;font-size:14px}
 :root{--blue:#1565C0;--light:#E3F2FD;--sh:0 2px 8px rgba(0,0,0,0.1)}
-/* ── انتخاب نوع فاکتور (کپسول) ── */
-.mode-pick{display:flex;justify-content:center;margin:2px auto 14px}
-.caps{display:flex;direction:ltr;align-items:flex-start}
-.cap{display:flex;flex-direction:column;align-items:center}
-.cap button{border:none;padding:15px 30px;font-family:inherit;font-weight:800;font-size:15px;color:#fff;cursor:pointer;opacity:.5;transition:all .15s}
-.cap.red button{background:#c62828;border-radius:30px 0 0 30px}
-.cap.blue button{background:#1565C0;border-radius:0 30px 30px 0}
-.cap.on button{opacity:1;box-shadow:0 3px 12px rgba(0,0,0,.3)}
-.cap-l{margin-top:7px;font-weight:700;font-size:13px}
-.cap.red .cap-l{color:#c62828}
-.cap.blue .cap-l{color:#1565C0}
+/* ── انتخاب نوع فاکتور: کپسول‌های سه‌بعدیِ براق با دود ── */
+.mode-pick{display:flex;justify-content:center;gap:46px;padding-top:40px;margin:0 auto 16px}
+.cap{display:flex;flex-direction:column;align-items:center;direction:rtl}
+.cap-wrap{position:relative;height:48px;display:flex;align-items:center;justify-content:center}
+.cap-pill{position:relative;width:122px;height:46px;border-radius:40px;border:none;cursor:pointer;overflow:visible;transition:transform .15s,opacity .15s;animation:capGlow 2.6s ease-in-out infinite}
+.cap-pill::before{content:'';position:absolute;left:12%;right:30%;top:16%;height:30%;border-radius:40px;background:linear-gradient(180deg,rgba(255,255,255,.9),rgba(255,255,255,0));filter:blur(.5px);pointer-events:none}
+.cap-pill::after{content:'';position:absolute;left:8px;top:9px;width:14px;height:26px;border-radius:50%;background:radial-gradient(ellipse at center,rgba(255,255,255,.85),rgba(255,255,255,0));filter:blur(1px);pointer-events:none}
+.cap.blue .cap-pill{background:linear-gradient(180deg,#6aa6ef 0%,#2f6fd0 42%,#123f96 100%);box-shadow:inset 0 3px 7px rgba(255,255,255,.55),inset 0 -7px 11px rgba(0,0,45,.45),0 7px 18px rgba(21,101,192,.6)}
+.cap.red .cap-pill{background:linear-gradient(180deg,#ff6f5e 0%,#e43327 42%,#a9140c 100%);box-shadow:inset 0 3px 7px rgba(255,255,255,.5),inset 0 -7px 11px rgba(70,0,0,.5),0 7px 18px rgba(198,40,40,.6)}
+.cap:not(.on) .cap-pill{opacity:.5;transform:scale(.94)}
+.cap.on .cap-pill{opacity:1;transform:scale(1.02)}
+.cap-l{margin-top:12px;font-weight:800;font-size:14px}
+.cap.red .cap-l{color:#c62828;text-shadow:0 0 8px rgba(229,51,39,.35)}
+.cap.blue .cap-l{color:#1565C0;text-shadow:0 0 8px rgba(21,101,192,.35)}
+@keyframes capGlow{0%,100%{filter:brightness(1)}50%{filter:brightness(1.15)}}
+@keyframes capSmoke{0%{opacity:0;transform:translateY(0) translateX(0) scale(.5)}18%{opacity:.5}100%{opacity:0;transform:translateY(-40px) translateX(9px) scale(2.1)}}
+.puff{position:absolute;top:-2px;width:15px;height:15px;border-radius:50%;filter:blur(6px);opacity:0;pointer-events:none;animation:capSmoke 3.2s ease-out infinite}
+.cap.red .puff{background:radial-gradient(circle,rgba(255,90,70,.6),rgba(255,90,70,0))}
+.cap.blue .puff{background:radial-gradient(circle,rgba(90,160,255,.6),rgba(90,160,255,0))}
 /* ── فاکتور قرمز (غیررسمی) ── */
 .inv-red{--blue:#8b0000;--light:#f7e4e4}
 .inv-red .inv-sec,.inv-red .inv-bank,.inv-red .inv-totals{border-color:#d79a9a}
@@ -262,10 +270,26 @@ table.inv-table .sum-row td {
 
 <!-- FORM -->
 <div class="screen" id="screen-form">
-  <div class="mode-pick"><div class="caps">
-    <div class="cap red" id="cap-red"><button type="button" onclick="setMode('unofficial')">غیررسمی</button><div class="cap-l">غیر رسمی</div></div>
-    <div class="cap blue on" id="cap-blue"><button type="button" onclick="setMode('official')">رسمی</button><div class="cap-l">رسمی</div></div>
-  </div></div>
+  <div class="mode-pick">
+    <div class="cap red" id="cap-red">
+      <div class="cap-wrap">
+        <span class="puff" style="left:22%;animation-delay:0s"></span>
+        <span class="puff" style="left:48%;animation-delay:.9s"></span>
+        <span class="puff" style="left:72%;animation-delay:1.8s"></span>
+        <button type="button" class="cap-pill" onclick="setMode('unofficial')" aria-label="غیر رسمی"></button>
+      </div>
+      <div class="cap-l">غیر رسمی</div>
+    </div>
+    <div class="cap blue on" id="cap-blue">
+      <div class="cap-wrap">
+        <span class="puff" style="left:24%;animation-delay:.5s"></span>
+        <span class="puff" style="left:50%;animation-delay:1.3s"></span>
+        <span class="puff" style="left:74%;animation-delay:2.1s"></span>
+        <button type="button" class="cap-pill" onclick="setMode('official')" aria-label="رسمی"></button>
+      </div>
+      <div class="cap-l">رسمی</div>
+    </div>
+  </div>
   <div class="meta-box">
     <div class="meta-item"><label>شماره سریال</label><span id="f-serial">-</span></div>
     <div class="meta-item" style="text-align:center"><label>تاریخ</label><span id="f-date" style="font-size:16px;direction:ltr;display:block">-</span></div>
