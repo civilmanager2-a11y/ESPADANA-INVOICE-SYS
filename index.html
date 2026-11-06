@@ -12,6 +12,26 @@
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:'Vazirmatn',Tahoma,sans-serif;background:#F0F4F8;color:#222;direction:rtl;font-size:14px}
 :root{--blue:#1565C0;--light:#E3F2FD;--sh:0 2px 8px rgba(0,0,0,0.1)}
+/* ── انتخاب نوع فاکتور (کپسول) ── */
+.mode-pick{display:flex;justify-content:center;margin:2px auto 14px}
+.caps{display:flex;direction:ltr;align-items:flex-start}
+.cap{display:flex;flex-direction:column;align-items:center}
+.cap button{border:none;padding:15px 30px;font-family:inherit;font-weight:800;font-size:15px;color:#fff;cursor:pointer;opacity:.5;transition:all .15s}
+.cap.red button{background:#c62828;border-radius:30px 0 0 30px}
+.cap.blue button{background:#1565C0;border-radius:0 30px 30px 0}
+.cap.on button{opacity:1;box-shadow:0 3px 12px rgba(0,0,0,.3)}
+.cap-l{margin-top:7px;font-weight:700;font-size:13px}
+.cap.red .cap-l{color:#c62828}
+.cap.blue .cap-l{color:#1565C0}
+/* ── فاکتور قرمز (غیررسمی) ── */
+.inv-red{--blue:#8b0000;--light:#f7e4e4}
+.inv-red .inv-sec,.inv-red .inv-bank,.inv-red .inv-totals{border-color:#d79a9a}
+.inv-red table.inv-table th{border-color:#9a2020}
+.inv-red table.inv-table td{border-color:#e0b4b4}
+.inv-red table.inv-table tr:nth-child(even) td{background:#fdf3f3}
+.inv-red table.inv-table .sum-row td{border-top-color:#8b0000}
+.inv-red .tot-row{border-bottom-color:#f0dada}
+.inv-red-note{margin:6px 0 4px;padding:7px 10px;border:1px solid #d79a9a;border-radius:4px;background:#fdf3f3;color:#8b0000;font-size:10.5px;font-weight:700;text-align:center}
 
 /* TOPBAR */
 .topbar{background:var(--blue);color:#fff;padding:10px 16px;display:flex;align-items:center;gap:12px;position:sticky;top:0;z-index:100;box-shadow:var(--sh)}
@@ -242,6 +262,10 @@ table.inv-table .sum-row td {
 
 <!-- FORM -->
 <div class="screen" id="screen-form">
+  <div class="mode-pick"><div class="caps">
+    <div class="cap red" id="cap-red"><button type="button" onclick="setMode('unofficial')">غیررسمی</button><div class="cap-l">غیر رسمی</div></div>
+    <div class="cap blue on" id="cap-blue"><button type="button" onclick="setMode('official')">رسمی</button><div class="cap-l">رسمی</div></div>
+  </div></div>
   <div class="meta-box">
     <div class="meta-item"><label>شماره سریال</label><span id="f-serial">-</span></div>
     <div class="meta-item" style="text-align:center"><label>تاریخ</label><span id="f-date" style="font-size:16px;direction:ltr;display:block">-</span></div>
@@ -440,7 +464,7 @@ function saveInv(inv){
   l.push(inv); localStorage.setItem('esp_invs',JSON.stringify(l.slice(-100)));
 }
 function getInvs(){ try{return JSON.parse(localStorage.getItem('esp_invs')||'[]');}catch(e){return[];} }
-function invoiceSummary(inv){return {serial:inv.serial,date:inv.date,name:inv.name,issuerMobile:inv.issuerMobile,total:inv.total,itemCount:inv.itemCount!=null?inv.itemCount:(inv.items||[]).length,createdAt:inv.createdAt};}
+function invoiceSummary(inv){return {serial:inv.serial,date:inv.date,name:inv.name,issuerMobile:inv.issuerMobile,total:inv.total,mode:inv.mode,itemCount:inv.itemCount!=null?inv.itemCount:(inv.items||[]).length,createdAt:inv.createdAt};}
 function getCachedInvoiceSummaries(){try{return JSON.parse(localStorage.getItem('esp_invoice_summaries')||'[]');}catch(e){return[];}}
 function cacheInvoiceSummaries(items){
   var map={};
@@ -482,7 +506,7 @@ function updateNums(){
 function calcItem(n){
   var c=document.getElementById('item-'+n); if(!c) return;
   var p=pnum(c.querySelector('.i-p').value), q=pnum(c.querySelector('.i-q').value), dc=pnum(c.querySelector('.i-dc').value);
-  var tot=p*q, aft=tot-dc, vat=aft*0.10;
+  var tot=p*q, aft=tot-dc, vat=aft*vatRate();
   var t=document.getElementById('itot-'+n);
   if(t) t.innerHTML='کل: <b>'+fmt(tot)+'</b> | پس از تخفیف: <b>'+fmt(aft)+'</b> | مالیات: <b>'+fmt(vat)+'</b> ریال';
   calcSummary();
@@ -491,7 +515,7 @@ function getItemsData(){
   var cards=document.querySelectorAll('#items-container .item-card'), items=[];
   cards.forEach(function(c,i){
     var p=pnum(c.querySelector('.i-p').value), q=pnum(c.querySelector('.i-q').value), dc=pnum(c.querySelector('.i-dc').value);
-    var tot=p*q, aft=tot-dc, vat=aft*0.10;
+    var tot=p*q, aft=tot-dc, vat=aft*vatRate();
     items.push({row:i+1, desc:c.querySelector('.i-d').value||'', unit:c.querySelector('.i-u').value||'',
       qty:q, price:p, total:tot, discount:dc, afterDisc:aft, vat:vat, payable:aft+vat});
   });
@@ -536,7 +560,7 @@ function showForm(){
 function showPrint(inv){
   ['screen-list','screen-form','screen-print'].forEach(function(id){document.getElementById(id).classList.remove('active');});
   document.getElementById('screen-print').classList.add('active');
-  setTopbar('پیش‌نمایش #'+inv.serial,'<button class="btn-sm" onclick="backToList()">← بازگشت</button>');
+  setTopbar('پیش‌نمایش #'+inv.serial+(inv.mode==='unofficial'?'R':''),'<button class="btn-sm" onclick="backToList()">← بازگشت</button>');
   renderPrint(inv);
 }
 function backToList(){ showList(); }
@@ -599,6 +623,16 @@ async function printInvoice(){
   }
 }
 
+// ===== INVOICE MODE (رسمی / غیررسمی) =====
+var INVOICE_MODE='official';
+function vatRate(){ return INVOICE_MODE==='unofficial' ? 0 : 0.10; }
+function setMode(m){
+  INVOICE_MODE=(m==='unofficial')?'unofficial':'official';
+  var r=document.getElementById('cap-red'), b=document.getElementById('cap-blue');
+  if(r&&b){ r.classList.toggle('on',INVOICE_MODE==='unofficial'); b.classList.toggle('on',INVOICE_MODE==='official'); }
+  if(typeof calcSummary==='function') try{calcSummary();}catch(e){}
+}
+
 // ===== GENERATE =====
 async function generatePDF(){
   var name=document.getElementById('f-name').value.trim();
@@ -626,7 +660,8 @@ async function generatePDF(){
     validityTerms:document.getElementById('f-validity').value,
     shippingTerms:document.getElementById('f-shipping').value,
     items:items,
-    subtotal:sub, discount:disc, afterDisc:aft, vat:vat, total:aft+vat
+    subtotal:sub, discount:disc, afterDisc:aft, vat:vat, total:aft+vat,
+    mode:INVOICE_MODE
   };
   var btn=document.getElementById('btn-generate'), status=document.getElementById('save-status');
   btn.disabled=true; status.textContent='در حال ثبت در دیتابیس و دریافت شماره سراسری...';
@@ -654,6 +689,9 @@ function esc(s){ return (s||'').toString().replace(/&/g,'&amp;').replace(/</g,'&
 
 function renderPrint(inv){
   var tq=0; inv.items.forEach(function(i){tq+=i.qty;});
+  var red = inv.mode==='unofficial';
+  var logoFill = red ? '#8b0000' : '#1565C0';
+  var serialTxt = inv.serial + (red ? 'R' : '');
 
   var rows = inv.items.map(function(it,i){
     return '<tr>'+
@@ -670,15 +708,15 @@ function renderPrint(inv){
   }).join('');
 
   var html =
-  '<div class="inv-page">'+
+  '<div class="inv-page'+(red?' inv-red':'')+'">'+
 
   /* ── HEADER ── */
   '<div class="inv-header">'+
     /* لوگو سمت راست بصری (در RTL = اول) */
     '<div class="inv-header-col hcol-logo">'+
       '<svg viewBox="0 0 160 55" width="145" height="50" xmlns="http://www.w3.org/2000/svg">'+
-        '<text x="2" y="36" font-family="Arial Black,Arial" font-weight="900" font-size="28" fill="#1565C0" letter-spacing="1">ESPADANA</text>'+
-        '<text x="2" y="50" font-family="Arial,sans-serif" font-size="12" fill="#1565C0">Design &amp; supervision</text>'+
+        '<text x="2" y="36" font-family="Arial Black,Arial" font-weight="900" font-size="28" fill="'+logoFill+'" letter-spacing="1">ESPADANA</text>'+
+        '<text x="2" y="50" font-family="Arial,sans-serif" font-size="12" fill="'+logoFill+'">Design &amp; supervision</text>'+
       '</svg>'+
     '</div>'+
     /* وسط = عنوان */
@@ -689,7 +727,7 @@ function renderPrint(inv){
     /* سریال/تاریخ سمت چپ بصری (در RTL = آخر) */
     '<div class="inv-header-col hcol-serial">'+
       '<table><tbody>'+
-        '<tr><td>شماره سریال:</td><td>'+inv.serial+'</td></tr>'+
+        '<tr><td>شماره سریال:</td><td>'+serialTxt+'</td></tr>'+
         '<tr><td>تاریخ:</td><td dir="ltr">'+inv.date+'</td></tr>'+
       '</tbody></table>'+
     '</div>'+
@@ -700,18 +738,18 @@ function renderPrint(inv){
     '<div class="inv-sec-t">مشخصات فروشنده</div>'+
     '<div class="inv-sec-b">'+
       '<div class="info-grid">'+
-        '<div class="info-item"><b>نام شخص حقیقی / حقوقی:</b><span>طرح و نظارت اسپادانا</span></div>'+
-        '<div class="info-item"><b>شماره اقتصادی:</b><span>411488451564</span></div>'+
-        '<div class="info-item"><b>شناسه ملی / شماره ثبت:</b><span>14004629583 / 465303</span></div>'+
+        '<div class="info-item"><b>نام شخص حقیقی / حقوقی:</b><span>'+(red?'گروه مهندسی اسپادانا':'طرح و نظارت اسپادانا')+'</span></div>'+
+        '<div class="info-item"><b>شماره اقتصادی:</b><span>'+(red?'14001111111':'411488451564')+'</span></div>'+
+        '<div class="info-item"><b>شناسه ملی / شماره ثبت:</b><span>'+(red?'111111':'14004629583 / 465303')+'</span></div>'+
       '</div>'+
       '<div class="info-grid" style="margin-top:3px">'+
         '<div class="info-item"><b>استان:</b><span>تهران</span></div>'+
         '<div class="info-item"><b>شهرستان:</b><span>تهران</span></div>'+
-        '<div class="info-item"><b>کدپستی:</b><span>1439744444</span></div>'+
+        '<div class="info-item"><b>کدپستی:</b><span>'+(red?'19111111111':'1439744444')+'</span></div>'+
       '</div>'+
       '<div class="info-addr" style="margin-top:3px">'+
-        '<b>نشانی:</b><span>امیرآباد شمالی، نبش خیابان چهاردهم، پلاک ۱۹۴۵ واحد ۲۴</span>'+
-        '<span style="margin-right:16px"><b>تلفن / نمابر:</b> <span dir="ltr">02188633892 / 02182809833</span></span>'+
+        '<b>نشانی:</b><span>'+(red?'تهران، خیابان شریعتی، خیابان میرداماد، میدان مینا، خیابان رودبار غربی، پلاک ۳۶':'امیرآباد شمالی، نبش خیابان چهاردهم، پلاک ۱۹۴۵ واحد ۲۴')+'</span>'+
+        '<span style="margin-right:16px"><b>تلفن / نمابر:</b> <span dir="ltr">'+(red?'02182809833':'02188633892 / 02182809833')+'</span></span>'+
       '</div>'+
     '</div>'+
   '</div>'+
@@ -782,13 +820,13 @@ function renderPrint(inv){
       '<div class="tot-row"><span>جمع مبلغ کل</span><span>'+fmt(inv.subtotal)+'</span></div>'+
       '<div class="tot-row"><span>جمع مبلغ تخفیف</span><span>'+fmt(inv.discount)+'</span></div>'+
       '<div class="tot-row"><span>جمع مبلغ کل پس از تخفیف</span><span>'+fmt(inv.afterDisc)+'</span></div>'+
-      '<div class="tot-row"><span>جمع مالیات و عوارض (۱۰٪)</span><span>'+fmt(inv.vat)+'</span></div>'+
+      '<div class="tot-row"><span>جمع مالیات و عوارض '+(red?'':'(۱۰٪)')+'</span><span>'+fmt(inv.vat)+'</span></div>'+
       '<div class="tot-row"><span>مبلغ قابل پرداخت (ریال)</span><span>'+fmt(inv.total)+'</span></div>'+
     '</div>'+
   '</div>'+
 
-  /* ── امضاء با جابجایی تصادفی ── */
-  (function(){
+  /* ── امضاء با جابجایی تصادفی (در فاکتور قرمز حذف می‌شود) ── */
+  (red ? '' : (function(){
     function rnd(min,max){ return (Math.random()*(max-min)+min).toFixed(1); }
     // مهر: جابجایی تصادفی ±8px افقی و ±6px عمودی + چرخش ±4 درجه
     var sTop=rnd(-6,6), sLeft=rnd(-8,8), sRot=rnd(-4,4);
@@ -810,7 +848,10 @@ function renderPrint(inv){
         '<div class="sig-line"></div>مهر و امضاء خریدار'+
       '</div>'+
     '</div>';
-  })()+
+  })())+
+
+  /* ── یادداشت فاکتور قرمز (بدون مالیات) ── */
+  (red ? '<div class="inv-red-note">این پیش‌فاکتور صرفاً جهت اطلاع از بها، بدون احتساب مالیات بر ارزش افزوده است</div>' : '')+
 
   /* ── شرایط ── */
   '<div class="inv-terms">'+
@@ -874,7 +915,7 @@ function renderList(){
   var html=toolbar+'<div class="card"><div class="card-b" style="padding:0">';
   list.forEach(function(inv){
     html+='<div class="list-item">'+
-      '<div class="list-badge">'+inv.serial+'</div>'+
+      '<div class="list-badge"'+(inv.mode==='unofficial'?' style="background:#f7e4e4;color:#8b0000"':'')+'>'+inv.serial+(inv.mode==='unofficial'?'R':'')+'</div>'+
       '<div class="list-info" onclick="viewInv('+inv.serial+')">'+
         '<div class="nm">'+esc(inv.name)+'</div>'+
         '<div class="mt">'+esc(inv.date||'---')+' | '+fmt(inv.itemCount||0)+' ردیف | اقدام‌کننده: <span dir="ltr">'+esc(inv.issuerMobile||'---')+'</span></div>'+
