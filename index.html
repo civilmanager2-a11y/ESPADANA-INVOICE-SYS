@@ -6,7 +6,15 @@
 <meta name="theme-color" content="#1565C0">
 <title>اسپادانا - پیش فاکتور</title>
 <link rel="manifest" href="manifest.json">
-<script>if('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js');</script>
+<script>
+if('serviceWorker' in navigator){
+  var __hadCtrl=!!navigator.serviceWorker.controller, __reloaded=false;
+  navigator.serviceWorker.addEventListener('controllerchange',function(){
+    if(__reloaded||!__hadCtrl) return; __reloaded=true; location.reload();
+  });
+  navigator.serviceWorker.register('sw.js').then(function(reg){ try{reg.update();}catch(e){} });
+}
+</script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;700&display=swap');
 *{box-sizing:border-box;margin:0;padding:0}
@@ -578,6 +586,7 @@ function showForm(){
   ['screen-list','screen-form','screen-print'].forEach(function(id){document.getElementById(id).classList.remove('active');});
   document.getElementById('screen-form').classList.add('active');
   setTopbar('فاکتور جدید','<button class="btn-sm" onclick="showList()">← بازگشت</button>');
+  try{ setMode('official'); }catch(e){}
   addItem();
   document.getElementById('f-name').focus();
 }

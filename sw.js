@@ -1,7 +1,6 @@
-const CACHE = 'espadana-v8-capsules';
+const CACHE = 'espadana-v9-fresh-html';
+// فقط دارایی‌های ثابت کش می‌شوند؛ خودِ HTML هرگز از کش قدیمی سرو نمی‌شود.
 const ASSETS = [
-  '/',
-  '/index.html',
   '/manifest.json',
   '/assets/stamp.jpg',
   '/assets/SIGNATURE.jpg',
@@ -27,8 +26,15 @@ self.addEventListener('fetch', event => {
   const url = new URL(event.request.url);
   if (event.request.method !== 'GET' || url.pathname.startsWith('/api/')) return;
 
-  if (event.request.mode === 'navigate') {
-    event.respondWith(fetch(event.request).catch(() => caches.match('/index.html')));
+  // HTML (ناوبری و ریشه): همیشه از شبکه؛ یک نسخه برای حالت آفلاین نگه داشته می‌شود.
+  if (event.request.mode === 'navigate' || url.pathname === '/' || url.pathname === '/index.html') {
+    event.respondWith(
+      fetch(event.request).then(res => {
+        const copy = res.clone();
+        caches.open(CACHE).then(c => c.put('/index.html', copy)).catch(() => {});
+        return res;
+      }).catch(() => caches.match('/index.html'))
+    );
     return;
   }
 
