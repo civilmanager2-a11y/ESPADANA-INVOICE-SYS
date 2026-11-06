@@ -75,6 +75,9 @@ export function validateInvoiceInput(input) {
   const invoice = input?.invoice ?? {};
   const name = cleanText(invoice.name, 200);
   const items = Array.isArray(invoice.items) ? invoice.items.slice(0, 100) : [];
+  // فاکتور غیررسمی (قرمز): بدون مالیات بر ارزش افزوده.
+  const mode = invoice.mode === "unofficial" ? "unofficial" : "official";
+  const vatRate = mode === "unofficial" ? 0 : 0.1;
 
   if (!isValidMobile(issuerMobile)) return { error: "شماره موبایل اقدام‌کننده معتبر نیست." };
   if (!name) return { error: "نام خریدار الزامی است." };
@@ -86,7 +89,7 @@ export function validateInvoiceInput(input) {
     const total = qty * price;
     const discount = Math.max(0, Math.min(Number(item?.discount) || 0, total));
     const afterDisc = total - discount;
-    const vat = afterDisc * 0.1;
+    const vat = afterDisc * vatRate;
     return {
       row: index + 1,
       desc: cleanText(item?.desc, 500),
@@ -138,6 +141,7 @@ export function validateInvoiceInput(input) {
         shippingTerms: cleanText(invoice.shippingTerms, 1000),
         validityTerms: cleanText(invoice.validityTerms, 1000),
         items: safeItems,
+        mode,
         ...summary,
       },
     },

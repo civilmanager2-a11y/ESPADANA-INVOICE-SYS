@@ -1,4 +1,4 @@
-const CACHE = 'espadana-v9-fresh-html';
+const CACHE = 'espadana-v10-redfix';
 // فقط دارایی‌های ثابت کش می‌شوند؛ خودِ HTML هرگز از کش قدیمی سرو نمی‌شود.
 const ASSETS = [
   '/manifest.json',

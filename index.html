@@ -840,15 +840,22 @@ function renderPrint(inv){
 
   /* ── پایین: بانک + جمع‌بندی ── */
   '<div class="inv-bottom">'+
-    '<div class="inv-bank">'+
-      '<div class="inv-bank-t">شرایط و نحوه فروش &nbsp;&nbsp; نقدی ☐ &nbsp;&nbsp; غیرنقدی ☐</div>'+
-      '<div class="inv-bank-b">'+
-        '<b>بانک صادرات ایران</b><br>'+
-        'شماره حساب: <span dir="ltr">0211572513007</span><br>'+
-        'شماره شبا: <span dir="ltr">IR 10 0190 0000 0021 1572 5130 07</span>'+
-        (inv.notes ? '<br><b>توضیحات:</b> '+esc(inv.notes) : '')+
-      '</div>'+
-    '</div>'+
+    (red
+      ? ('<div class="inv-bank">'+
+           '<div class="inv-bank-t">شرایط و نحوه فروش &nbsp;&nbsp; نقدی ☐ &nbsp;&nbsp; غیرنقدی ☐</div>'+
+           '<div class="inv-bank-b">'+
+             (inv.notes ? '<b>توضیحات:</b> '+esc(inv.notes) : '&nbsp;')+
+           '</div>'+
+         '</div>')
+      : ('<div class="inv-bank">'+
+           '<div class="inv-bank-t">شرایط و نحوه فروش &nbsp;&nbsp; نقدی ☐ &nbsp;&nbsp; غیرنقدی ☐</div>'+
+           '<div class="inv-bank-b">'+
+             '<b>بانک صادرات ایران</b><br>'+
+             'شماره حساب: <span dir="ltr">0211572513007</span><br>'+
+             'شماره شبا: <span dir="ltr">IR 10 0190 0000 0021 1572 5130 07</span>'+
+             (inv.notes ? '<br><b>توضیحات:</b> '+esc(inv.notes) : '')+
+           '</div>'+
+         '</div>'))+
     '<div class="inv-totals">'+
       '<div class="tot-row"><span>جمع مبلغ کل</span><span>'+fmt(inv.subtotal)+'</span></div>'+
       '<div class="tot-row"><span>جمع مبلغ تخفیف</span><span>'+fmt(inv.discount)+'</span></div>'+
@@ -952,7 +959,7 @@ function renderList(){
       '<div class="list-info" onclick="viewInv('+inv.serial+')">'+
         '<div class="nm">'+esc(inv.name)+'</div>'+
         '<div class="mt">'+esc(inv.date||'---')+' | '+fmt(inv.itemCount||0)+' ردیف | اقدام‌کننده: <span dir="ltr">'+esc(inv.issuerMobile||'---')+'</span></div>'+
-        '<div class="am">'+fmt(inv.total)+' ریال</div>'+
+        '<div class="am"'+(inv.mode==='unofficial'?' style="color:#8b0000"':'')+'>'+fmt(inv.total)+' ریال</div>'+
       '</div>'+
       '<span style="color:#90A4AE;font-size:20px">‹</span>'+
     '</div>';

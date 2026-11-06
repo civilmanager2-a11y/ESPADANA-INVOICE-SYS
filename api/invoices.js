@@ -65,6 +65,7 @@ async function listInvoices(request, response) {
       i.total,
       i.created_at,
       c.name AS customer_name,
+      i.payload->>'mode' AS mode,
       COALESCE(jsonb_array_length(i.payload->'items'), 0) AS item_count,
       COUNT(*) OVER() AS total_count
     FROM invoices i
@@ -89,6 +90,7 @@ async function listInvoices(request, response) {
       name: row.customer_name,
       issuerMobile: row.issuer_mobile,
       total: Number(row.total),
+      mode: row.mode === "unofficial" ? "unofficial" : "official",
       itemCount: Number(row.item_count),
       createdAt: row.created_at,
     })),
